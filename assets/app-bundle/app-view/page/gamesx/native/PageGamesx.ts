@@ -188,6 +188,7 @@ export class PageGamesx extends BaseView {
 
     private currentItemLength: number = 0;
     private list_put(item: GameItem) {
+        // 槽位已满直接失败
         if (this.currentItemLength >= ITEM_LIST_MAX) {
             app.manager.ui.showToast('游戏结束！！');
             return;
@@ -197,6 +198,7 @@ export class PageGamesx extends BaseView {
         let insertIndex = this.elimi_list.map(v => v.type).lastIndexOf(item.type);
         insertIndex = insertIndex < 0 ? this.elimi_list.length : insertIndex + 1;
 
+        // 更新已有元素索引
         for (let i = insertIndex; i < this.elimi_list.length; i++) {
             this.elimi_list[i].index++;
         }
@@ -218,40 +220,38 @@ export class PageGamesx extends BaseView {
         this.elimi_list.splice(insertIndex, 0, item);
         this.currentItemLength = this.elimi_list.length;
 
-        let sameItems = this.elimi_list.filter(v => v.type === item.type);
-        if (sameItems.length >= 3) {
-            this.currentItemLength -= 3;
-        } else {
-            sameItems = null;
-        }
-
-        // 先移动到正确位置，再检查是否需要消除
-        this.anima_items_move(() => {
-            if (sameItems) {
-                sameItems.forEach(it => {
-                    const idx = this.elimi_list.indexOf(it);
-                    if (idx >= 0) this.elimi_list.splice(idx, 1);
-                });
-            }
-
+        // 动画移动到目标位置
+        this.anima_item_to_list(item, () => {
+            // 检查是否三连
+            this.list_check_elimi(item.type);
         });
     }
+
 
     // 插入后尝试匹配三消
-    private list_try_elimi(type: number) {
+    private list_check_elimi(type: number) {
         const sameItems = this.elimi_list.filter(v => v.type === type);
 
-        sameItems.forEach(it => {
-            const idx = this.elimi_list.indexOf(it);
-            if (idx >= 0) this.elimi_list.splice(idx, 1);
-        });
-        this.currentItemLength = this.elimi_list.length;
-        this.list_refresh_index();
+        if (sameItems.length >= 3) {
+            // 从数组移除
+            sameItems.forEach(it => {
+                const idx = this.elimi_list.indexOf(it);
+                if (idx >= 0) this.elimi_list.splice(idx, 1);
+            });
+            this.currentItemLength = this.elimi_list.length;
 
-        this.anima_items_elimi(sameItems, () => {
+            // 播放消除动画
+            this.anima_items_elimi(sameItems, () => {
+                this.list_refresh_index();
+                this.anima_items_move(() => this.check_game_status());
+            });
+        } else {
+            // 没有三连，刷新位置
+            this.list_refresh_index();
             this.anima_items_move(() => this.check_game_status());
-        });
+        }
     }
+
 
     // 重排索引并保持位置
     private list_refresh_index() {
