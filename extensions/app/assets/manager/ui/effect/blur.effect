@@ -1,0 +1,119 @@
+CCEffect %{
+  techniques:
+  - name: opaque
+    passes:
+    - vert: vs:vert
+      frag: fs:frag
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendSrcAlpha: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      properties:
+        blurSize: { value: [750, 1334] }
+        blurriness: { value: 1, editor: {range:[0, 1, 0.01], slide: true} }
+        blurLevel: { value: 1, editor: {range:[1, 3, 1], slide: true} }
+
+}%
+
+CCProgram vs %{
+  precision highp float;
+  #include <cc-global>
+
+  in vec4 a_position;
+  in vec2 a_texCoord;
+  out vec2 v_texCoord;
+
+  vec4 vert() {
+    vec4 pos = cc_matViewProj * a_position;
+    v_texCoord = a_texCoord;
+    return pos;
+  }
+}%
+
+CCProgram fs %{
+  precision highp float;
+
+  in vec2 v_texCoord;
+  #pragma builtin(local)
+  layout(set = 2, binding = 10) uniform sampler2D cc_spriteTexture;
+
+  uniform Constant {
+    vec2 blurSize;
+    float blurriness;
+    float blurLevel;
+  };
+
+  // 模糊处理函数
+  vec4 blur (vec2 pos) {
+    float sum = 0.0;
+    vec4 color = vec4(0);
+
+    if (blurLevel == 1.0) {
+      const float blurRadius = 10.0;
+      const float blurStep = 1.0;
+      // 采样周边像素并求出加权平均值，得到最终的像素值
+      for (float rx = -blurRadius; rx <= blurRadius; rx += blurStep) {
+        for (float ry = -blurRadius; ry <= blurRadius; ry += blurStep) {
+          vec2 target = pos + vec2(rx / blurSize[0], ry / blurSize[1]);
+          float weight = (blurRadius - abs(rx)) * (blurRadius - abs(ry));
+          target.x = clamp(target.x, 0.0, 1.0);
+          target.y = clamp(target.y, 0.0, 1.0);
+          color += texture(cc_spriteTexture, target) * weight;
+          sum += weight;
+        }
+      }
+    } else if(blurLevel == 2.0) {
+      const float blurRadius = 20.0;
+      const float blurStep = 2.0;
+      // 采样周边像素并求出加权平均值，得到最终的像素值
+      for (float rx = -blurRadius; rx <= blurRadius; rx += blurStep) {
+        for (float ry = -blurRadius; ry <= blurRadius; ry += blurStep) {
+          vec2 target = pos + vec2(rx / blurSize[0], ry / blurSize[1]);
+          float weight = (blurRadius - abs(rx)) * (blurRadius - abs(ry));
+          target.x = clamp(target.x, 0.0, 1.0);
+          target.y = clamp(target.y, 0.0, 1.0);
+          color += texture(cc_spriteTexture, target) * weight;
+          sum += weight;
+        }
+      }
+    } else {
+      const float blurRadius = 30.0;
+      const float blurStep = 3.0;
+      // 采样周边像素并求出加权平均值，得到最终的像素值
+      for (float rx = -blurRadius; rx <= blurRadius; rx += blurStep) {
+        for (float ry = -blurRadius; ry <= blurRadius; ry += blurStep) {
+          vec2 target = pos + vec2(rx / blurSize[0], ry / blurSize[1]);
+          float weight = (blurRadius - abs(rx)) * (blurRadius - abs(ry));
+          target.x = clamp(target.x, 0.0, 1.0);
+          target.y = clamp(target.y, 0.0, 1.0);
+          color += texture(cc_spriteTexture, target) * weight;
+          sum += weight;
+        }
+      }
+    }
+
+    color /= sum;
+    return color;
+  }
+
+  vec4 frag () {
+    // 获取纹理像素颜色
+    vec4 o = vec4(1, 1, 1, 1);
+    o *= texture(cc_spriteTexture, v_texCoord);
+
+    // 执行模糊逻辑
+    vec4 color = blur(v_texCoord); 
+    color.a = o.a;
+    o = o + (color-o) * blurriness;
+
+    return o;
+  }
+}%

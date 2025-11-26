@@ -1,0 +1,42 @@
+#app {
+    position: relative;
+    width: 100%;
+}
+
+.container {
+    position: relative;
+    width: 100%;
+}
+
+.content {
+    position: relative;
+    width: 80%;
+    margin: 8px auto;
+    text-align: center;
+}
+
+.content-item {
+    margin-top: 8px;
+}
+
+.help {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background-color: rgba(0, 0, 0, 0.6);
+    /* 背景模糊 */
+    /* backdrop-filter: blur(3px); */
+}
+
+.loading-item {
+    margin-top: 50%;
+}
