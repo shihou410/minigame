@@ -1,12 +1,13 @@
-import { _decorator, Color, JsonAsset, Node, NodeEventType, Sprite, SubContextView, tween, UIOpacity, UITransform, utils, v3 } from 'cc';
+﻿import { _decorator, Color, JsonAsset, Node, NodeEventType, Sprite, Tween, tween, UITransform, v3 } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 const ROWS: number = 8;
-
 const ITEM_LIST_MAX: number = 7;
+const ITEM_SIZE: number = 112;
+const LIST_MAX: number = 7;
 
 type GameItem = {
     id: number,
@@ -17,25 +18,24 @@ type GameItem = {
     row: number,
     col: number,
     index: number,
+    ani?: Tween
 };
 
-
-const ITEM_SIZE: number = 112;
-const LIST_MAX: number = 7;
 @ccclass('PageGamesx')
 export class PageGamesx extends BaseView {
     /** 游戏内容节点 */
     private content: Node = null;
-    /** 游戏item节点 */
+    /** 游戏 item 节点 */
     private layer_instance: Node = null;
-    /** item消除列表的节点 */
+    /** item 消除列表的节点 */
     private layer_itme_list: Node = null;
-
+    /** 暂时存放 item 的节点 */
+    private layer_temp: Node = null;
 
     /** 关卡配置 */
     private level_config: any[] = null;
-    /** 当前关卡id */
-    private current_level_number: number = 1;
+    /** 当前关卡 id */
+    private current_level_number: number = 5;
     /** 当前关卡配置 */
     private current_level_config: any = null;
 
@@ -55,23 +55,21 @@ export class PageGamesx extends BaseView {
 
     private itemId: number = 0;
 
-    // 初始化的相关逻辑写在这
+    // 初始化
     onLoad() {
         this.content = this.node.getChildByName('content');
         this.layer_instance = this.content.getChildByName('layer_instance');
         this.layer_itme_list = this.content.getChildByName('layer_list');
+        this.layer_temp = this.content.getChildByName('layer_temp');
 
         const uit = this.layer_instance.getComponent(UITransform);
-
         this.itemScale = uit.width / ROWS / ITEM_SIZE;
-
         this.itemSize = ITEM_SIZE * this.itemScale;
-
         this.startX = -uit.width / 2;
         this.startY = uit.height / 2;
 
         const task = app.lib.task.createSync();
-        task.add((next, retry) => {
+        task.add((next) => {
             this.loadRes('level/level', JsonAsset, (res) => {
                 this.level_config = res.json as any[];
                 this.current_level_config = this.level_config[this.current_level_number - 1];
@@ -79,20 +77,18 @@ export class PageGamesx extends BaseView {
             });
         });
 
-        task.start(suc => {
+        task.start(() => {
             this.init();
         });
-
     }
 
-    // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
+    // 界面打开时的相关逻辑写在 onShow，可被多次调用
     onShow(params: any) {
         this.showMiniViews({ views: this.miniViews });
     }
 
-    // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
+    // 界面关闭时的相关逻辑写在 onHide
     onHide(result: undefined) {
-        // app.manager.ui.show<PageGamesx>({name: 'PageGamesx', onHide:(result) => { 接收到return的数据，并且有类型提示 }})
         return result;
     }
 
@@ -100,7 +96,6 @@ export class PageGamesx extends BaseView {
     private game_items: GameItem[][] = null;
     private elimi_list: GameItem[] = null;
     private init(step: number = 0) {
-
         this.node_layers = [];
         this.elimi_list = [];
         this.game_items = [];
@@ -112,7 +107,7 @@ export class PageGamesx extends BaseView {
         this.game_items[this.node_layers.length - 1].forEach(v => {
             this.item_set_active(v, true);
         });
-        console.log("游戏数据：", this.game_items);
+        console.log('游戏数据', this.game_items);
         this.startGame();
     }
 
@@ -120,7 +115,6 @@ export class PageGamesx extends BaseView {
     private startGame() { }
 
     private generateLayer(layers: number) {
-
         for (let layer = 0; layer < layers; layer++) {
             const layer_node = new Node();
             this.layer_instance.addChild(layer_node);
@@ -167,22 +161,23 @@ export class PageGamesx extends BaseView {
     }
 
     private item_click(item: GameItem) {
-
         item.node.off(NodeEventType.TOUCH_START);
-        let length: number = 0;
+        let length = 0;
         this.game_items.forEach(v => { length += v.length; });
 
-        if (this.elimi_list.length >= ITEM_LIST_MAX) {
-            console.log("游戏结束！！");
+        if (this.currentItemLength >= ITEM_LIST_MAX) {
+            console.log('游戏结束！！');
+            app.manager.ui.showToast('游戏结束！！');
         } else if (length <= 0) {
-            console.log("游戏成功！！");
+            app.manager.ui.showToast('游戏成功！！');
+            console.log('游戏成功！！');
         } else {
             this.list_put(item);
         }
     }
 
     private color: Color = new Color;
-    /** 设置item的状态 */
+    /** 设置 item 的状态 */
     private item_set_active(item: GameItem, value: boolean) {
         item.active = value;
         value ? this.color.set(255, 255, 255, 255) : this.color.set(111, 111, 111, 255);
@@ -191,91 +186,137 @@ export class PageGamesx extends BaseView {
         item.node.getChildByName('spr').getComponent(Sprite).color = this.color;
     }
 
+    private currentItemLength: number = 0;
     private list_put(item: GameItem) {
+        if (this.currentItemLength >= ITEM_LIST_MAX) {
+            app.manager.ui.showToast('游戏结束！！');
+            return;
+        }
 
         // 查找插入位置：相同类型的最后一个后面
-        let insertIndex = this.elimi_list.findIndex(v => { return v.type === item.type; });
-        if (insertIndex < 0) {
-            insertIndex = this.elimi_list.length;
-        } else {
-            for (let i = insertIndex; i < this.elimi_list.length; i++)++this.elimi_list[i].index;
+        let insertIndex = this.elimi_list.map(v => v.type).lastIndexOf(item.type);
+        insertIndex = insertIndex < 0 ? this.elimi_list.length : insertIndex + 1;
+
+        for (let i = insertIndex; i < this.elimi_list.length; i++) {
+            this.elimi_list[i].index++;
         }
         item.index = insertIndex;
 
-        // 插入到指定位置
-        this.elimi_list.splice(insertIndex, 0, item);
-        console.log("array: ", this.elimi_list.map(v => { return v.index; }));
-        // 添加到对应图层
+        // 从原层移除
+        const layerItems = this.game_items[item.layer];
+        const f = layerItems.findIndex(v => v.id === item.id);
+        if (f >= 0) { layerItems.splice(f, 1); }
+
+        // 添加到收集区节点，保持原世界坐标避免跳动
         const ws = item.node.worldPosition;
         const pos = this.layer_itme_list.getComponent(UITransform).convertToNodeSpaceAR(ws);
         this.layer_itme_list.addChild(item.node);
         item.node.position = pos;
-
-        // 删除网格数据
-        const f = this.game_items[item.layer].findIndex(v => { return v.id === item.id; });
-        (f >= 0) && this.game_items[item.layer].splice(f, 1);
-
-        // 设置缩放
         item.node.setScale(this.list_item_scale, this.list_item_scale);
 
-        // 播放动画
-        this.elimi_list.forEach(e => this.anima_item_to_list(e));
-        const sameItems = this.check_elimination(item.type);
+        // 插入到收集区数组
+        this.elimi_list.splice(insertIndex, 0, item);
+        this.currentItemLength = this.elimi_list.length;
 
-        // let delay = 0;
-        // if (sameItems) {
-        //     this.scheduleOnce(() => sameItems.forEach(i => this.anima_item_elimi(i)), 0.3);
-        //     delay = 0.3;
-        // }
-
-        // this.scheduleOnce(() => {
-        //     this.rearrange_list();
-        //     this.elimi_list.forEach((item) => { this.anima_item_move(item); });
-        // }, delay + 0.3);
-
-    }
-
-    // 检查具有相同类型的三个item
-    private check_elimination(type: number): GameItem[] {
-        // 找出所有相同类型的 item
-        const sameItems = this.elimi_list.filter(i => i.type === type);
+        let sameItems = this.elimi_list.filter(v => v.type === item.type);
         if (sameItems.length >= 3) {
-            // 从 elimi_list 中移除这些 item
-            this.elimi_list = this.elimi_list.filter(i => i.type !== type);
-            return sameItems;
+            this.currentItemLength -= 3;
+        } else {
+            sameItems = null;
         }
-        return null;
+
+        // 先移动到正确位置，再检查是否需要消除
+        this.anima_items_move(() => {
+            if (sameItems) {
+                sameItems.forEach(it => {
+                    const idx = this.elimi_list.indexOf(it);
+                    if (idx >= 0) this.elimi_list.splice(idx, 1);
+                });
+            }
+
+        });
     }
 
-    //重新排列item
-    private rearrange_list() {
-        this.elimi_list.forEach((item, idx) => item.index = idx);
+    // 插入后尝试匹配三消
+    private list_try_elimi(type: number) {
+        const sameItems = this.elimi_list.filter(v => v.type === type);
+
+        sameItems.forEach(it => {
+            const idx = this.elimi_list.indexOf(it);
+            if (idx >= 0) this.elimi_list.splice(idx, 1);
+        });
+        this.currentItemLength = this.elimi_list.length;
+        this.list_refresh_index();
+
+        this.anima_items_elimi(sameItems, () => {
+            this.anima_items_move(() => this.check_game_status());
+        });
     }
-    // item消除动画
-    private anima_item_elimi(item: GameItem) {
-        tween(item.node).to(0.3, { scale: v3(0, 0, 0) }).call(() => {
+
+    // 重排索引并保持位置
+    private list_refresh_index() {
+        this.elimi_list.forEach((it, idx) => it.index = idx);
+    }
+
+    // 检查胜负状态
+    private check_game_status() {
+        if (this.currentItemLength >= ITEM_LIST_MAX) {
+            app.manager.ui.showToast('游戏结束！！');
+            return;
+        }
+
+        let remain = this.elimi_list.length;
+        this.game_items.forEach(v => remain += v.length);
+        if (remain === 0) {
+            app.manager.ui.showToast('游戏成功！！');
+        }
+    }
+
+    private anima_items_elimi(item: GameItem[], call: () => void = null, duration: number = 0.3) {
+        item.forEach(i => this.anima_item_elimi(i, duration));
+        this.scheduleOnce(() => call && call(), duration);
+    }
+
+    // item 消除动画
+    private anima_item_elimi(item: GameItem, duration: number = 0.3) {
+        tween(item.node).to(duration, { scale: v3(0, 0, 0) }).call(() => {
             app.manager.game.putItem(item.node);
             item.node = null;
         }).start();
     }
-    // item移动动画
-    private anima_item_move(item: GameItem) {
-        const pos = this.index_to_list(item.index);
-        tween(item.node).to(0.3, { position: v3(pos[0], pos[1], 0) }).start();
+
+    private anima_items_move(call: () => void = null, duration: number = 0.3) {
+        this.elimi_list.forEach(item => {
+            !item.ani && this.anima_item_move(item, duration);
+        });
+        this.scheduleOnce(() => call && call(), duration);
     }
 
-    // item放置动画
-    private anima_item_to_list(item: GameItem) {
-
+    // item 移动动画
+    private anima_item_move(item: GameItem, duration: number = 0.3) {
         const pos = this.index_to_list(item.index);
-        tween(item.node).to(0.3, { position: v3(pos[0], pos[1]) }).start();
+        item.ani = tween(item.node)
+            .to(duration, { position: v3(pos[0], pos[1], 0) })
+            .call(() => { item.ani = null })
+            .start();
+    }
+
+    private anima_itme_move_to(item: GameItem, call: () => void = null) {
+        const pos = this.index_to_list(item.index);
+        tween(item.node).to(0.3, { position: v3(pos[0], pos[1] + this.layer_itme_list.y, 0) }).call(() => call && call()).start();
+    }
+
+    // item 放置动画
+    private anima_item_to_list(item: GameItem, call: (item: GameItem) => void) {
+        const pos = this.index_to_list(item.index);
+        tween(item.node).to(0.3, { position: v3(pos[0], pos[1]) }).call(() => call && call(item)).start();
     }
 
     private index_to_list(index: number): [number, number] {
-        const itemWidth = this.itemScale * ITEM_SIZE
+        const itemWidth = this.itemScale * ITEM_SIZE;
         const startX = -297;
         const startY = 22;
-        return [startX + index * (itemWidth + 5), startY]
+        return [startX + index * (itemWidth + 5), startY];
     }
 
     private grid_to_node(row: number, col: number): number[] {
@@ -284,5 +325,4 @@ export class PageGamesx extends BaseView {
             this.startY - row * this.itemSize,
         ];
     }
-
 }

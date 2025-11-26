@@ -1221,6 +1221,25 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     }
 
 
+    /**
+     *         // 播放动画
+            this.anima_item_to_list(item, (i) => {
+                if (this.elimi_list.length < 3) return;
+                this.check_elimination(item.type)?.forEach(e => {
+                    app.manager.game.putItem(e.node);
+                    e.node = null;
+                });
+                this.rearrange_list();
+                this.elimi_list.forEach(i => this.anima_item_move(i));
+            });
+     * 
+     * 
+     * 
+     * 
+     * 
+     */
+
+
 
 
 }
