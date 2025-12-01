@@ -1,30 +1,32 @@
-﻿import { _decorator, Color, JsonAsset, Node, NodeEventType, Sprite, Tween, tween, UITransform, v3 } from 'cc';
+﻿import { _decorator, Color, ConfigurableConstraint, JsonAsset, Node, NodeEventType, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
+import { GameController } from 'db://assets/app-builtin/app-controller/GameController';
 const { ccclass } = _decorator;
 
-const ROWS: number = 8;
+const COLS: number = 8;
 const ITEM_LIST_MAX: number = 7;
 const ITEM_SIZE: number = 112;
-const LIST_MAX: number = 7;
+
+const GRAY_COLOR: Color = new Color(122, 122, 122, 255);
 
 type GameItem = {
     id: number,
     layer: number,
     type: number,
     node: Node,
-    active: boolean,
     row: number,
     col: number,
     index: number,
     cType: number,
     isMove?: boolean,
     isLanded?: boolean,
+    isBlock?: boolean,
 };
 
 @ccclass('PageGamesx')
-export class PageGamesx extends BaseView {
+export class PageGamesx extends BaseView.BindController(GameController) {
     /** 游戏内容节点 */
     private content: Node = null;
     /** 游戏 item 节点 */
@@ -37,7 +39,7 @@ export class PageGamesx extends BaseView {
     /** 关卡配置 */
     private level_config: any[] = null;
     /** 当前关卡 id */
-    private current_level_number: number = 44;
+    private current_level_number: number = 1;
     /** 当前关卡配置 */
     private current_level_config: any = null;
 
@@ -47,7 +49,7 @@ export class PageGamesx extends BaseView {
     private sub_count: number = 0;
 
     // 子界面列表，数组顺序为子界面排列顺序
-    protected miniViews: IMiniViewNames = [];
+    protected miniViews: IMiniViewNames = ['PaperAllGame'];
 
     private startX: number = 0;
     private startY: number = 0;
@@ -67,14 +69,14 @@ export class PageGamesx extends BaseView {
         this.layer_temp = this.content.getChildByName('layer_temp');
 
         const uit = this.layer_instance.getComponent(UITransform);
-        this.itemScale = uit.width / ROWS / ITEM_SIZE;
+        this.itemScale = uit.width / COLS / ITEM_SIZE;
         this.itemSize = ITEM_SIZE * this.itemScale;
         this.startX = -uit.width / 2;
-        this.startY = uit.height / 2;
+        this.startY = uit.height / 2 - 80;
 
         const task = app.lib.task.createSync();
         task.add((next) => {
-            this.loadRes('level/level', JsonAsset, (res) => {
+            if (!this.level_config) this.loadRes('level/level', JsonAsset, (res) => {
                 this.level_config = res.json as any[];
                 this.current_level_config = this.level_config[this.current_level_number - 1];
                 next();
@@ -84,6 +86,10 @@ export class PageGamesx extends BaseView {
         task.start(() => {
             this.init();
         });
+
+        this.controller.on('NextLevel', this.nextLevel, this);
+        this.controller.on('UseProp', this.useProp, this);
+
     }
 
     // 界面打开时的相关逻辑写在 onShow，可被多次调用
@@ -100,23 +106,73 @@ export class PageGamesx extends BaseView {
     private game_items: GameItem[][] = null;
     // 消除列表
     private elimi_list: GameItem[] = null;
+
+    private currentItemLength: number = 0;
+    private isXiaoChu: boolean = false;
+
+    private maxSteps: number = 0;
     private init(step: number = 0) {
         this.node_layers = [];
         this.elimi_list = [];
         this.game_items = [];
         this.crrent_sub = step;
-        const layers = this.current_level_config[this.crrent_sub].layers.length;
+        this.currentItemLength = 0;
+        this.isXiaoChu = false;
+        this.current_level_config = this.level_config[this.current_level_number - 1];
+        this.maxSteps = this.current_level_config.length;
+
+        const stepConfig = this.current_level_config[this.crrent_sub];
+
+
+        const layers = stepConfig.layers.length;
+
+        let min_x = Infinity;
+        let min_y = Infinity;
+        let max_x = -Infinity;
+        let max_y = -Infinity;
+
+        stepConfig.layers.forEach((layers: any) => {
+            layers.tiles.forEach((tile: any) => {
+                min_x = Math.min(min_x, tile.x);
+                min_y = Math.min(min_y, tile.y);
+                max_x = Math.max(max_x, tile.x);
+                max_y = Math.max(max_y, tile.y);
+            });
+        });
+
+        const cols = (max_x - min_x); // 横向格子数
+        const rows = (max_y - min_y); // 纵向格子数
+
+        // 关卡宽高（像素）
+        const levelWidth = cols * this.itemSize;
+        const levelHeight = rows * this.itemSize;
+
+        // 让关卡中心对齐画布中心
+        this.startX = -levelWidth / 2 + min_x * this.itemSize;
+        this.startY = levelHeight / 2 - max_y * this.itemSize;
+
+
+        // this.startX = -h * this.itemSize;
+        // this.startY = v * this.itemSize;
+        console.log("levelWidth：", levelWidth);
+        console.log("levelHeight：", levelHeight);
+
+        console.log("min_x：", min_x);
+        console.log("min_y：", min_y);
+        console.log("max_x：", max_x);
+        console.log("max_y：", max_y);
 
         this.generateLayer(layers);
 
-        this.game_items[this.node_layers.length - 1].forEach(v => {
-            this.item_set_active(v, true);
+        this.anima_enter(() => {
+            const items = this.refresh_block_state();
+            items.forEach(item => this.anima_item_color(item, Color.WHITE, GRAY_COLOR));
         });
-        console.log('游戏数据', this.game_items);
+
         this.startGame();
     }
 
-    private list_item_scale: number = 0.86;
+    private readonly list_item_scale: number = 0.86;
     private startGame() {
 
         this.gameState = 'start';
@@ -130,11 +186,11 @@ export class PageGamesx extends BaseView {
             const items: GameItem[] = [];
             const tiles = this.current_level_config[this.crrent_sub].layers[layer].tiles;
             tiles.forEach((tile: any) => {
-                const col = 4 - tile.x;
-                const row = 4 - tile.y;
+                const temp = COLS / 2;
+                const col = temp + tile.x;
+                const row = temp - tile.y;
 
                 const item = this.createItem(layer, tile.skinIdx, row, col);
-                this.item_set_active(item, false);
                 item.index = items.length;
                 items.push(item);
             });
@@ -151,11 +207,11 @@ export class PageGamesx extends BaseView {
             layer: layer,
             type: type,
             node: node,
-            active: true,
             row: 1,
             col: 1,
             index: 0,
-            cType: type
+            cType: type,
+
         };
 
         const spriteFrame = app.manager.game.getSpriteFrameByIndex(type);
@@ -169,34 +225,41 @@ export class PageGamesx extends BaseView {
         return item;
     }
 
+    private grid_to_node(row: number, col: number): number[] {
+        return [
+            this.startX + col * this.itemSize,
+            this.startY - row * this.itemSize,
+        ];
+    }
+
     private item_click(item: GameItem) {
         if (this.gameState === 'end') return;
+
+        // 新增：被遮挡不能点
+        if (item.isBlock) {
+            this.anima_item_error(item);
+            return;
+        }
+
         item.node.off(NodeEventType.TOUCH_START);
+
         let length = 0;
         this.game_items.forEach(v => { length += v.length; });
 
         if (this.currentItemLength >= ITEM_LIST_MAX) {
-            console.log('游戏结束！！');
             app.manager.ui.showToast('游戏结束！！');
         } else if (length <= 0) {
             app.manager.ui.showToast('游戏成功！！');
-            console.log('游戏成功！！');
         } else {
             this.list_put(item);
         }
     }
 
-    private color: Color = new Color;
-    /** 设置 item 的状态 */
-    private item_set_active(item: GameItem, value: boolean) {
-        item.active = value;
-        value ? this.color.set(255, 255, 255, 255) : this.color.set(111, 111, 111, 255);
-
-        item.node.getChildByName('normal').getComponent(Sprite).color = this.color;
-        item.node.getChildByName('spr').getComponent(Sprite).color = this.color;
-    }
-
     private list_put(item: GameItem) {
+
+        //先获取所有被遮挡的item
+        const tempItems: GameItem[] = [];
+        this.game_items.forEach(items => items.forEach(i => i.isBlock && tempItems.push(i)));
 
         // 查找插入位置：相同类型的最后一个后面
         let insertIndex = this.elimi_list.map(v => v.type).lastIndexOf(item.type);
@@ -207,6 +270,8 @@ export class PageGamesx extends BaseView {
 
         const same = this.elimi_list.filter(i => { return i.type !== -1 && i.type === item.type; });
         if (same.length >= 3) { same.forEach(i => { i.type = -1; }); }
+
+        this.list_refresh_leng();
 
         // 从原层移除
         const layerItems = this.game_items[item.layer];
@@ -222,26 +287,37 @@ export class PageGamesx extends BaseView {
 
         //起飞
         item.isMove = true;
+
+        const res = this.refresh_block_state();
+        const items: GameItem[] = [];
+        tempItems.forEach(i => {
+            const index = res.indexOf(i);
+            if (index < 0) items.push(i);
+        });
+        items.forEach(i => this.anima_item_color(i, GRAY_COLOR, Color.WHITE));
+
     }
 
 
-    private currentItemLength: number = 0;
-    private isXiaoChu: boolean = false;
     protected update(dt: number): void {
         if (this.gameState != 'start') return;
         if (!this.elimi_list) return;
+
+        let landedCount: number = 0;
         this.elimi_list?.forEach((item: GameItem, index: number) => {
             const target = this.index_to_list(item.index);
-            const res = item.node.position.lerp(v3(target[0], target[1]), dt * 10);
+            const res = item.node.position.lerp(v3(target[0], target[1]), dt * 15);
             item.node.setPosition(res);
 
             if (!item.isLanded && v3(item.node.position).subtract(v3(target[0], target[1])).length() < 1) {
                 item.isLanded = true;
                 item.isMove = false;
                 this.list_refresh_leng();
-                this.check_game_status();
             }
+            if (item.isLanded) landedCount++;
         });
+
+        landedCount === this.elimi_list.length && this.check_game_status();
 
         const same = this.elimi_list.filter(e => { return e.type === -1 && !e.isMove; });
 
@@ -261,15 +337,69 @@ export class PageGamesx extends BaseView {
 
     }
 
+    private refresh_block_state(): GameItem[] {
+
+        const blocks: GameItem[] = [];
+        const rootTrans = this.layer_instance.getComponent(UITransform);
+        const blockSize = this.itemSize * 0.65; // 遮挡判定范围，可调 0.5 ~ 0.8
+
+        for (let layer = 0; layer < this.game_items.length; layer++) {
+
+            const list = this.game_items[layer];
+
+            list.forEach(item => {
+                // 如果这个 item 已经飞走到槽里，不在层中，不需要判断遮挡
+                if (!item.node || item.node.parent !== this.node_layers[layer]) {
+                    item.isBlock = false;
+                    return;
+                }
+
+                // item 当前世界坐标 → 转换到同一坐标系
+                const wpos = item.node.worldPosition;
+                const pos = rootTrans.convertToNodeSpaceAR(wpos);
+
+                let blocked = false;
+
+                // 查找所有上层
+                for (let upper = layer + 1; upper < this.game_items.length; upper++) {
+
+                    const upperList = this.game_items[upper];
+
+                    const hit = upperList.find(u => {
+                        if (!u.node || u.node.parent !== this.node_layers[upper]) return false;
+
+                        const uw = u.node.worldPosition;
+                        const up = rootTrans.convertToNodeSpaceAR(uw);
+
+                        // 计算重叠（AABB）
+                        const dx = Math.abs(up.x - pos.x);
+                        const dy = Math.abs(up.y - pos.y);
+
+                        return dx < blockSize && dy < blockSize;
+                    });
+
+                    if (hit) {
+                        blocked = true;
+                        break;
+                    }
+                }
+
+                item.isBlock = blocked;
+                if (item.isBlock) blocks.push(item);
+            });
+        }
+        return blocks;
+    }
+
+
     // 重排索引并保持位置
     private list_refresh_index() {
         this.elimi_list.forEach((it, idx) => it.index = idx);
     }
 
     private list_refresh_leng() {
-        this.currentItemLength = this.elimi_list.filter(e => { return e.type !== -1 && e.isLanded }).length;
+        this.currentItemLength = this.elimi_list.filter(e => { return e.type !== -1 }).length;
     }
-
 
     // 检查胜负状态
     private check_game_status() {
@@ -287,6 +417,58 @@ export class PageGamesx extends BaseView {
         }
     }
 
+    // 开场动画
+    private anima_enter(call: () => void) {
+
+        let count = 0;
+        let finished = 0;
+        const duration = 0.3;
+        this.game_items.forEach((items: GameItem[], layer: number) => {
+            count += items.length;
+            items.forEach(item => {
+                item.node.setScale(0, 0, 1);
+                tween(item.node)
+                    .delay(duration * layer)
+                    .to(duration, { scale: v3(this.itemScale, this.itemScale, 1) }, { easing: 'backOut' })
+                    .call(() => {
+                        ++finished;
+                        if (finished >= count) call && call();
+                    }).start();
+            });
+        });
+    }
+
+    // item遮挡动画
+    private anima_item_error(item: GameItem) {
+        if (!item || !item.node) return;
+
+        // 停掉之前的动画（防止叠加卡顿）
+        if ((item as any)._errorTween) {
+            (item as any)._errorTween.stop();
+            (item as any)._errorTween = null;
+        }
+
+        const node = item.node;
+        const originalX = node.position.x;
+
+        const shakeDist = 12;   // 摇晃幅度
+        const shakeTime = 0.05; // 每次摇晃的时间
+
+        const t = tween(node)
+            .to(shakeTime, { position: v3(originalX - shakeDist, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX + shakeDist, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX - shakeDist * 0.6, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX + shakeDist * 0.6, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX, node.position.y, 0) })
+            .call(() => {
+                (item as any)._errorTween = null;
+            });
+
+        (item as any)._errorTween = t;
+        t.start();
+    }
+
+    // item消除动画
     private anima_items_elimi(item: GameItem[], call: () => void = null, duration: number = 0.3) {
         let delayTime = 0;
         item.forEach((element, index) => {
@@ -300,8 +482,20 @@ export class PageGamesx extends BaseView {
                 app.manager.game.putItem(element.node);
                 element.node = null;
             });
-            call && call()
+            call && call();
         }, delayTime);
+    }
+
+    private tempColor: Color = new Color(255, 255, 255, 255);
+    // item换色
+    private anima_item_color(item: GameItem, sColor: Color, dColor: Color) {
+        this.tempColor.set(sColor.r, sColor.g, sColor.b, sColor.a);
+        tween(this.tempColor).to(0.3, { r: dColor.r, g: dColor.g, b: dColor.b, a: dColor.a }, {
+            onUpdate: (target, ratio) => {
+                item.node.getChildByName('normal').getComponent(Sprite).color = this.tempColor;
+                item.node.getChildByName('spr').getComponent(Sprite).color = this.tempColor;
+            },
+        }).start();
     }
 
     private index_to_list(index: number): [number, number] {
@@ -311,10 +505,26 @@ export class PageGamesx extends BaseView {
         return [startX + index * (itemWidth + 5), startY];
     }
 
-    private grid_to_node(row: number, col: number): number[] {
-        return [
-            this.startX + col * this.itemSize,
-            this.startY - row * this.itemSize,
-        ];
+    private clearLevel() {
+        this.layer_instance.removeAllChildren();
+        this.layer_itme_list.removeAllChildren();
+        this.layer_temp.removeAllChildren();
     }
+
+
+    /** 下一关 */
+    private nextLevel() {
+        this.clearLevel();
+        this.current_level_number++;
+        this.init();
+    }
+
+    /** 使用道具 */
+    private useProp(type: number) {
+
+    }
+
+
+
+
 }
