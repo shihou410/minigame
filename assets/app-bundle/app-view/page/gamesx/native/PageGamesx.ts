@@ -44,15 +44,12 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private current_level_config: any = null;
 
     /** 当前子关卡 */
-    private crrent_sub: number = 0;
+    private current_sub: number = 0;
     /** 子关卡数量 */
     private sub_count: number = 0;
 
     // 子界面列表，数组顺序为子界面排列顺序
     protected miniViews: IMiniViewNames = ['PaperAllGame'];
-
-    private startX: number = 0;
-    private startY: number = 0;
 
     private itemScale: number = 0;
     private itemSize: number = 0;
@@ -71,8 +68,6 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         const uit = this.layer_instance.getComponent(UITransform);
         this.itemScale = uit.width / COLS / ITEM_SIZE;
         this.itemSize = ITEM_SIZE * this.itemScale;
-        this.startX = -uit.width / 2;
-        this.startY = uit.height / 2 - 80;
 
         const task = app.lib.task.createSync();
         task.add((next) => {
@@ -94,7 +89,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
     // 界面打开时的相关逻辑写在 onShow，可被多次调用
     onShow(params: any) {
-        this.showMiniViews({ views: this.miniViews });
+        this.showMiniViews({ views: this.miniViews, data: this.current_level_number });
     }
 
     // 界面关闭时的相关逻辑写在 onHide
@@ -115,13 +110,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         this.node_layers = [];
         this.elimi_list = [];
         this.game_items = [];
-        this.crrent_sub = step;
+        this.current_sub = step;
         this.currentItemLength = 0;
         this.isXiaoChu = false;
         this.current_level_config = this.level_config[this.current_level_number - 1];
         this.maxSteps = this.current_level_config.length;
 
-        const stepConfig = this.current_level_config[this.crrent_sub];
+        const stepConfig = this.current_level_config[this.current_sub];
 
 
         const layers = stepConfig.layers.length;
@@ -140,32 +135,16 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             });
         });
 
-        const cols = (max_x - min_x); // 横向格子数
-        const rows = (max_y - min_y); // 纵向格子数
+        // 先计算这些tile有多少行和列
+        const cols = (max_x - min_x) + 1;
+        const rows = (max_y - min_y) + 1;
 
-        // 关卡宽高（像素）
-        const levelWidth = cols * this.itemSize;
-        const levelHeight = rows * this.itemSize;
+        const centerx = (min_x + max_x) / 2;
+        const centery = (min_y + max_y) / 2;
 
-        // 让关卡中心对齐画布中心
-        this.startX = -levelWidth / 2 + min_x * this.itemSize;
-        this.startY = levelHeight / 2 - max_y * this.itemSize;
-
-
-        // this.startX = -h * this.itemSize;
-        // this.startY = v * this.itemSize;
-        console.log("levelWidth：", levelWidth);
-        console.log("levelHeight：", levelHeight);
-
-        console.log("min_x：", min_x);
-        console.log("min_y：", min_y);
-        console.log("max_x：", max_x);
-        console.log("max_y：", max_y);
-
-        this.generateLayer(layers);
-
+        this.generateLayer(layers, centerx, centery);
+        const items = this.refresh_block_state();
         this.anima_enter(() => {
-            const items = this.refresh_block_state();
             items.forEach(item => this.anima_item_color(item, Color.WHITE, GRAY_COLOR));
         });
 
@@ -174,22 +153,20 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
     private readonly list_item_scale: number = 0.86;
     private startGame() {
-
         this.gameState = 'start';
     }
 
-    private generateLayer(layers: number) {
+    private generateLayer(layers: number, centerx: number, centery: number) {
+
         for (let layer = 0; layer < layers; layer++) {
             const layer_node = new Node();
             this.layer_instance.addChild(layer_node);
             this.node_layers.push(layer_node);
             const items: GameItem[] = [];
-            const tiles = this.current_level_config[this.crrent_sub].layers[layer].tiles;
+            const tiles = this.current_level_config[this.current_sub].layers[layer].tiles;
             tiles.forEach((tile: any) => {
-                const temp = COLS / 2;
-                const col = temp + tile.x;
-                const row = temp - tile.y;
-
+                const col = tile.x - centerx;
+                const row = tile.y - centery;
                 const item = this.createItem(layer, tile.skinIdx, row, col);
                 item.index = items.length;
                 items.push(item);
@@ -226,10 +203,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     private grid_to_node(row: number, col: number): number[] {
-        return [
-            this.startX + col * this.itemSize,
-            this.startY - row * this.itemSize,
-        ];
+        return [col * this.itemSize, row * this.itemSize,];
     }
 
     private item_click(item: GameItem) {
@@ -246,13 +220,8 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         let length = 0;
         this.game_items.forEach(v => { length += v.length; });
 
-        if (this.currentItemLength >= ITEM_LIST_MAX) {
-            app.manager.ui.showToast('游戏结束！！');
-        } else if (length <= 0) {
-            app.manager.ui.showToast('游戏成功！！');
-        } else {
-            this.list_put(item);
-        }
+        if (this.currentItemLength < ITEM_LIST_MAX) this.list_put(item);
+
     }
 
     private list_put(item: GameItem) {
@@ -404,8 +373,8 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     // 检查胜负状态
     private check_game_status() {
         if (this.currentItemLength >= ITEM_LIST_MAX) {
-            app.manager.ui.showToast('游戏结束！！');
             this.gameState = 'end';
+            this.controller.gameEnd(false);
             return;
         }
 
@@ -413,9 +382,10 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         this.game_items.forEach(v => remain += v.length);
         if (remain === 0) {
             this.gameState = 'end';
-            app.manager.ui.showToast('游戏成功！！');
+            this.nextStep();
         }
     }
+
 
     // 开场动画
     private anima_enter(call: () => void) {
@@ -511,11 +481,24 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         this.layer_temp.removeAllChildren();
     }
 
+    /** 下一轮 */
+    private nextStep() {
+
+        this.current_sub++;
+        this.clearLevel();
+        if (this.current_sub >= this.maxSteps) {
+            this.current_sub = 0;
+            this.controller.gameEnd(true);
+        } else {
+            this.init(this.current_sub);
+        }
+
+    }
 
     /** 下一关 */
-    private nextLevel() {
+    private nextLevel(level: number) {
         this.clearLevel();
-        this.current_level_number++;
+        this.current_level_number = level;
         this.init();
     }
 
