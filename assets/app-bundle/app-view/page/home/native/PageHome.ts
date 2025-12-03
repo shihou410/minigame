@@ -9,18 +9,21 @@ export class PageHome extends BaseView {
     protected miniViews: IMiniViewNames = [];
 
     private content: Node = null;
-    private startBtn: Node = null;
 
+    private xxlBtn: Node = null;
+    private lllBtn: Node = null;
 
     // 初始化的相关逻辑写在这
     onLoad() {
 
         this.content = this.node.getChildByName('content');
-        this.startBtn = this.content.getChildByName('startBtn');
+        this.xxlBtn = this.content.getChildByName('xxlBtn');
+        this.lllBtn = this.content.getChildByName('lllBtn');
 
-        const label_level = this.startBtn.getComponentInChildren(Label);
+        const label_level = this.xxlBtn.getComponentInChildren(Label);
 
-        this.startBtn.on(NodeEventType.TOUCH_START, this.onClickStart, this);
+        this.xxlBtn.on(NodeEventType.TOUCH_START, this.onClickXXl, this);
+        this.lllBtn.on(NodeEventType.TOUCH_START, this.onClickLLl, this);
 
         label_level.string = `LEVEL 1`;
     }
@@ -36,9 +39,11 @@ export class PageHome extends BaseView {
         return result;
     }
 
-    private onClickStart() {
-        app.manager.ui.showAsync({ name: "PageGamellk" });
+    private onClickXXl() {
+        app.manager.ui.showAsync({ name: "PageGamesx", data: { level: 1 } });
     }
 
-
+    private onClickLLl() {
+        app.manager.ui.showAsync({ name: "PageGamellk", data: { level: 1 } });
+    }
 }

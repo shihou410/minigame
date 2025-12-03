@@ -1,11 +1,10 @@
-﻿import { _decorator, Color, ConfigurableConstraint, JsonAsset, Node, NodeEventType, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
+﻿import { _decorator, Asset, Color, ConfigurableConstraint, JsonAsset, math, Node, NodeEventType, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
 import { GameController } from 'db://assets/app-builtin/app-controller/GameController';
 const { ccclass } = _decorator;
 
-const COLS: number = 8;
 const ITEM_LIST_MAX: number = 7;
 const ITEM_SIZE: number = 112;
 
@@ -20,6 +19,7 @@ type GameItem = {
     col: number,
     index: number,
     cType: number,
+    isElimi?: boolean,
     isMove?: boolean,
     isLanded?: boolean,
     isBlock?: boolean,
@@ -39,20 +39,26 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     /** 关卡配置 */
     private level_config: any[] = null;
     /** 当前关卡 id */
-    private current_level_number: number = 1;
+    private _current_level_number: number = 70;
+    private set current_level_number(v: number) {
+        this._current_level_number = v;
+        this.current_level_index = (this.current_level_number - 1) % 50;
+        if (this.level_config) this.current_level_config = this.level_config[this.current_level_index];
+
+    }
+
+    private get current_level_number(): number {
+        return this._current_level_number;
+    }
+
+    private current_level_index: number = 0;
     /** 当前关卡配置 */
     private current_level_config: any = null;
 
-    /** 当前子关卡 */
-    private current_sub: number = 0;
-    /** 子关卡数量 */
-    private sub_count: number = 0;
-
+    /** 关卡路径 */
+    private current_level_path: string = '';
     // 子界面列表，数组顺序为子界面排列顺序
     protected miniViews: IMiniViewNames = ['PaperAllGame'];
-
-    private itemScale: number = 0;
-    private itemSize: number = 0;
 
     private itemId: number = 0;
 
@@ -65,15 +71,33 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         this.layer_itme_list = this.content.getChildByName('layer_list');
         this.layer_temp = this.content.getChildByName('layer_temp');
 
-        const uit = this.layer_instance.getComponent(UITransform);
-        this.itemScale = uit.width / COLS / ITEM_SIZE;
-        this.itemSize = ITEM_SIZE * this.itemScale;
+        this.bindEvent();
+    }
 
+    private bindEvent() {
+        this.controller.on('NextLevel', this.nextLevel, this);
+        this.controller.on('UseProp', this.useProp, this);
+    }
+
+    private offEvent() {
+        this.controller.off('NextLevel', this.nextLevel, this);
+        this.controller.off('UseProp', this.useProp, this);
+    }
+
+    // 界面打开时的相关逻辑写在 onShow，可被多次调用
+    onShow(params: any) {
+        this.current_level_number = params.level;
+        this.showMiniViews({ views: this.miniViews, data: this.current_level_number });
+        this.current_level_path = `level/level_${Math.floor((this.current_level_number - 1) / 50)}`;
+        this.loadLevel(this.current_level_path);
+    }
+
+    protected loadLevel(path: string) {
         const task = app.lib.task.createSync();
         task.add((next) => {
-            if (!this.level_config) this.loadRes('level/level', JsonAsset, (res) => {
+            this.loadRes(path, JsonAsset, (res) => {
                 this.level_config = res.json as any[];
-                this.current_level_config = this.level_config[this.current_level_number - 1];
+                this.current_level_config = this.level_config[this.current_level_index];
                 next();
             });
         });
@@ -81,21 +105,15 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         task.start(() => {
             this.init();
         });
-
-        this.controller.on('NextLevel', this.nextLevel, this);
-        this.controller.on('UseProp', this.useProp, this);
-
     }
-
-    // 界面打开时的相关逻辑写在 onShow，可被多次调用
-    onShow(params: any) {
-        this.showMiniViews({ views: this.miniViews, data: this.current_level_number });
-    }
-
     // 界面关闭时的相关逻辑写在 onHide
     onHide(result: undefined) {
+        this.offEvent();
         return result;
     }
+
+    private itemScale: number = 0;
+    private itemSize: number = 0;
 
     private node_layers: Node[] = null;
     private game_items: GameItem[][] = null;
@@ -105,19 +123,20 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private currentItemLength: number = 0;
     private isXiaoChu: boolean = false;
 
-    private maxSteps: number = 0;
+    /** 当前子关卡 */
+    private current_step: number = 0;
+    private max_step: number = 0;
     private init(step: number = 0) {
         this.node_layers = [];
         this.elimi_list = [];
         this.game_items = [];
-        this.current_sub = step;
+        this.current_step = step;
         this.currentItemLength = 0;
         this.isXiaoChu = false;
-        this.current_level_config = this.level_config[this.current_level_number - 1];
-        this.maxSteps = this.current_level_config.length;
 
-        const stepConfig = this.current_level_config[this.current_sub];
+        this.max_step = this.current_level_config.length;
 
+        const stepConfig = this.current_level_config[this.current_step];
 
         const layers = stepConfig.layers.length;
 
@@ -135,9 +154,15 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             });
         });
 
-        // 先计算这些tile有多少行和列
         const cols = (max_x - min_x) + 1;
         const rows = (max_y - min_y) + 1;
+
+        let COLS = 8; if (rows > 9) COLS = 8.5;
+
+        const uit = this.layer_instance.getComponent(UITransform);
+        this.itemScale = uit.width / COLS / ITEM_SIZE;
+        this.itemSize = ITEM_SIZE * this.itemScale;
+
 
         const centerx = (min_x + max_x) / 2;
         const centery = (min_y + max_y) / 2;
@@ -163,7 +188,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             this.layer_instance.addChild(layer_node);
             this.node_layers.push(layer_node);
             const items: GameItem[] = [];
-            const tiles = this.current_level_config[this.current_sub].layers[layer].tiles;
+            const tiles = this.current_level_config[this.current_step].layers[layer].tiles;
             tiles.forEach((tile: any) => {
                 const col = tile.x - centerx;
                 const row = tile.y - centery;
@@ -173,6 +198,9 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             });
             this.game_items.push(items);
         }
+
+        this.sortItem();
+
     }
 
     private createItem(layer: number, type: number, row: number, col: number): GameItem {
@@ -188,7 +216,6 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             col: 1,
             index: 0,
             cType: type,
-
         };
 
         const spriteFrame = app.manager.game.getSpriteFrameByIndex(type);
@@ -203,7 +230,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     private grid_to_node(row: number, col: number): number[] {
-        return [col * this.itemSize, row * this.itemSize,];
+        return [col * this.itemSize, row * this.itemSize + 80];
     }
 
     private item_click(item: GameItem) {
@@ -252,10 +279,12 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         const pos = this.layer_itme_list.getComponent(UITransform).convertToNodeSpaceAR(ws);
         this.layer_itme_list.addChild(item.node);
         item.node.position = pos;
-        item.node.setScale(this.list_item_scale, this.list_item_scale);
+        // item.node.setScale(this.list_item_scale, this.list_item_scale);
 
         //起飞
-        item.isMove = true;
+        tween(item.node)
+            .to(0.2, { scale: v3(item.node.scale).multiplyScalar(1.3), angle: -10 })
+            .call(() => item.isMove = true).start();
 
         const res = this.refresh_block_state();
         const items: GameItem[] = [];
@@ -275,8 +304,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         let landedCount: number = 0;
         this.elimi_list?.forEach((item: GameItem, index: number) => {
             const target = this.index_to_list(item.index);
-            const res = item.node.position.lerp(v3(target[0], target[1]), dt * 15);
-            item.node.setPosition(res);
+            if (item.isMove || item.isLanded) {
+                const sp = 15;
+                item.node.position.lerp(v3(target[0], target[1]), dt * sp);
+                const s_res = v3(item.node.scale).lerp(v3(this.list_item_scale, this.list_item_scale, 1), dt * sp);
+                !item.isElimi && item.node.setScale(s_res);
+                item.node.angle = math.lerp(item.node.angle, 0, dt * sp);
+            }
 
             if (!item.isLanded && v3(item.node.position).subtract(v3(target[0], target[1])).length() < 1) {
                 item.isLanded = true;
@@ -288,13 +322,15 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
         landedCount === this.elimi_list.length && this.check_game_status();
 
-        const same = this.elimi_list.filter(e => { return e.type === -1 && !e.isMove; });
+        const same = this.elimi_list.filter(e => { return e.type === -1 && !e.isElimi && !e.isMove && e.isLanded; });
 
         if (!this.isXiaoChu && same.length >= 3) {
             const temp = same.filter(i => { return i.cType === same[0].cType; });
             if (temp.length >= 3) {
                 this.isXiaoChu = true;
-                this.anima_items_elimi(temp.splice(0, 3), () => {
+                const elimi = temp.splice(0, 3);
+                elimi.forEach(i => { i.isElimi = true });
+                this.anima_items_elimi(elimi, () => {
                     this.isXiaoChu = false;
                     this.elimi_list = this.elimi_list.filter(i => { return i.node });
                     this.list_refresh_index();
@@ -386,6 +422,14 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         }
     }
 
+    private sortItem() {
+        this.game_items.forEach(layer => {
+            layer.sort((a, b) => b.node.position.y - a.node.position.y)
+                .forEach((item, index) => {
+                    item.node.setSiblingIndex(index);
+                });
+        });
+    }
 
     // 开场动画
     private anima_enter(call: () => void) {
@@ -469,10 +513,10 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     private index_to_list(index: number): [number, number] {
-        const itemWidth = this.itemScale * ITEM_SIZE;
-        const startX = -297;
+        const itemWidth = this.list_item_scale * ITEM_SIZE;
+        const startX = -294;
         const startY = 22;
-        return [startX + index * (itemWidth + 5), startY];
+        return [startX + index * (itemWidth + 2), startY];
     }
 
     private clearLevel() {
@@ -484,13 +528,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     /** 下一轮 */
     private nextStep() {
 
-        this.current_sub++;
+        this.current_step++;
         this.clearLevel();
-        if (this.current_sub >= this.maxSteps) {
-            this.current_sub = 0;
+        if (this.current_step >= this.max_step) {
+            this.current_step = 0;
             this.controller.gameEnd(true);
         } else {
-            this.init(this.current_sub);
+            this.init(this.current_step);
         }
 
     }
@@ -498,8 +542,18 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     /** 下一关 */
     private nextLevel(level: number) {
         this.clearLevel();
-        this.current_level_number = level;
-        this.init();
+
+        if (level > 1000) {
+            app.manager.ui.showToast("暂无更多关卡");
+        } else {
+            this.current_level_number = level;
+            const newPath = `level/level_${Math.floor((this.current_level_number - 1) / 50)}`;
+            if (newPath != this.current_level_path) {
+                this.loadLevel(newPath);
+            } else {
+                this.init();
+            }
+        }
     }
 
     /** 使用道具 */

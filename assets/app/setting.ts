@@ -12,7 +12,7 @@ Logger.setting.filter = DEBUG ? ['error', 'log', 'warn'] : ['error'];
 // 预加载的UI列表
 UIManager.setting.preload = [];
 // 默认UI, 会在首屏流程后自动show
-UIManager.setting.defaultUI = 'PageGamesx'; // 通过App菜单创建Page类型的UI后，填入该UI的名称(会有自动提示与类型检查)
+UIManager.setting.defaultUI = 'PageHome'; // 通过App菜单创建Page类型的UI后，填入该UI的名称(会有自动提示与类型检查)
 // 是否自动适配分辨率策略
 UIManager.setting.autoFit = true; // 开启后，会弃用项目设置中的适配策略，并自动根据设备分辨率与设计分辨率计算出新的适配策略
 // 弹窗默认遮罩展现动画配置

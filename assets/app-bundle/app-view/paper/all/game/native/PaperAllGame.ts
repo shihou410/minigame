@@ -18,12 +18,19 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         this.title = this.content.getChildByName('title').getComponent(Label);
         this.btns_node = this.content.getChildByName('btns');
 
+        this.bindEvent();
+    }
+    bindEvent() {
         this.controller.on('GameEnd', this.onGameEnd, this);
         this.controller.on('NextLevel', this.onNextLevel, this);
 
         this.btns_node.children.forEach(node => node.on(Button.EventType.CLICK, this.onClickBtn, this));
-
         this.proplist.children.forEach(node => node.on(Button.EventType.CLICK, this.onClickProp, this));
+    }
+
+    offEvent() {
+        this.controller.off('GameEnd', this.onGameEnd, this);
+        this.controller.off('NextLevel', this.onNextLevel, this);
     }
 
     private level_number: number = 0;
@@ -34,9 +41,10 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
 
     }
 
+
     // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
     onHide(result: undefined) {
-
+        this.offEvent();
     }
 
     private onNextLevel(level: number) {
@@ -68,10 +76,9 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     private onClickBtn(node: Node) {
         const name = node.name;
         if (name.startsWith('back')) {
-            this.level_number++;
-            this.controller.nextLevel(this.level_number);
+            app.manager.ui.show({ name: 'PageHome' });
         } else if (name.startsWith('set')) {
-            app.manager.ui.show({ name: 'PageGamesx' });
+            // app.manager.ui.show({ name: 'PageGamesx' });
         }
     }
 

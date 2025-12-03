@@ -61,7 +61,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.label_title = this.content.getChildByName('label_title').getComponent(Label);
         this.game_state = "ready";
 
-        this.controller.on('UseProp', this.onUseProp, this);
+
 
 
         const uid = app.manager.ui.showLoading();
@@ -92,6 +92,13 @@ export class PageGamellk extends BaseView.BindController(GameController) {
                 this.initGame(this.currentLevel);
             }
         });
+
+        this.bindEvent();
+
+    }
+
+    private bindEvent() {
+        this.controller.on('UseProp', this.onUseProp, this);
     }
 
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
@@ -100,6 +107,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
     onHide(result: undefined) {
         // app.manager.ui.show<PageGamellk>({name: 'PageGamellk', onHide:(result) => { 接收到return的数据，并且有类型提示 }})
+        this.controller.off('UseProp', this.onUseProp, this);
         return result;
     }
 
@@ -131,7 +139,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
         this.pairedStart = randomRangeInt(0, 4);
         this.itemID = 0;
-
         const uit = this.layer_items.getComponent(UITransform);
         this.stageWidth = uit.width - 60;
         this.stageHeight = uit.height;
@@ -239,12 +246,12 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         node.setScale(itemScale, itemScale);
         const xy = this.gridToNode(row, col);
         node.setPosition(xy[0], xy[1]);
-        this.bindEvent(item);
+        this.itemEvent(item);
 
         return item;
     }
 
-    private bindEvent(item: GameItem) {
+    private itemEvent(item: GameItem) {
         const node = item.node;
         node.on(NodeEventType.TOUCH_START, () => this.onItemDown(item), this);
         node.on(NodeEventType.TOUCH_CANCEL, () => this.onItemUp(item), this);
