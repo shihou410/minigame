@@ -1,4 +1,4 @@
-﻿import { _decorator, Asset, Color, ConfigurableConstraint, JsonAsset, math, Node, NodeEventType, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
+﻿import { _decorator, Asset, Color, ConfigurableConstraint, instantiate, JsonAsset, math, Node, NodeEventType, Prefab, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
@@ -36,6 +36,10 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     /** 暂时存放 item 的节点 */
     private layer_temp: Node = null;
 
+
+    private eff_put: Prefab = null;
+
+
     /** 关卡配置 */
     private level_config: any[] = null;
     /** 当前关卡 id */
@@ -64,12 +68,22 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
     private gameState: 'pause' | 'start' | 'end' = 'end';
 
+
     // 初始化
     onLoad() {
         this.content = this.node.getChildByName('content');
         this.layer_instance = this.content.getChildByName('layer_instance');
         this.layer_itme_list = this.content.getChildByName('layer_list');
         this.layer_temp = this.content.getChildByName('layer_temp');
+
+        app.manager.loader.load({
+            path: 'prefab/effect_item_put',
+            bundle: 'resources',
+            type: Prefab,
+            onComplete: (asset: Prefab) => {
+                this.eff_put = asset;
+            }
+        });
 
         this.bindEvent();
     }
@@ -87,7 +101,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     // 界面打开时的相关逻辑写在 onShow，可被多次调用
     onShow(params: any) {
         this.current_level_number = params.level;
-        this.showMiniViews({ views: this.miniViews, data: this.current_level_number });
+        this.showMiniViews({ views: this.miniViews, data: { level: this.current_level_number } });
         this.current_level_path = `level/level_${Math.floor((this.current_level_number - 1) / 50)}`;
         this.loadLevel(this.current_level_path);
     }
@@ -316,6 +330,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
                 item.isLanded = true;
                 item.isMove = false;
                 this.list_refresh_leng();
+                this.eff_put_play(item);
             }
             if (item.isLanded) landedCount++;
         });
@@ -431,6 +446,15 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         });
     }
 
+    private eff_put_play(item: GameItem) {
+        if (!this.eff_put) return;
+
+        const eff = instantiate(this.eff_put);
+        eff.name = "eff_node";
+        item.node.addChild(eff);
+    }
+
+
     // 开场动画
     private anima_enter(call: () => void) {
 
@@ -493,6 +517,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
         this.scheduleOnce(() => {
             item.forEach((element, index) => {
+                const eff = element.node.getChildByName("eff_node");
+                if (eff) {
+                    const ws = eff.worldPosition;
+                    const ls = this.layer_temp.getComponent(UITransform).convertToNodeSpaceAR(ws);
+                    this.layer_temp.addChild(eff);
+                    eff.position = ls;
+                }
                 app.manager.game.putItem(element.node);
                 element.node = null;
             });
@@ -522,7 +553,6 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private clearLevel() {
         this.layer_instance.removeAllChildren();
         this.layer_itme_list.removeAllChildren();
-        this.layer_temp.removeAllChildren();
     }
 
     /** 下一轮 */

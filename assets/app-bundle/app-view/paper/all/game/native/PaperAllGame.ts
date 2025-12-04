@@ -36,9 +36,8 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     private level_number: number = 0;
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
     onShow(params: any) {
-        this.level_number = params;
+        this.level_number = params.level;
         this.title.string = `第${this.level_number}关`;
-
     }
 
 

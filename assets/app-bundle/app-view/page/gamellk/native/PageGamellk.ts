@@ -61,9 +61,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.label_title = this.content.getChildByName('label_title').getComponent(Label);
         this.game_state = "ready";
 
-
-
-
         const uid = app.manager.ui.showLoading();
         const task = app.lib.task.createASync();
         task.add((next, rery) => {
@@ -87,7 +84,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         task.start((suc) => {
             app.manager.ui.hideLoading(uid);
             if (suc) {
-                this.showMiniViews({ views: this.miniViews, data: this.level_cfg });
+                this.showMiniViews({ views: this.miniViews, data: { level: 1 } });
                 // return;
                 this.initGame(this.currentLevel);
             }
@@ -99,6 +96,12 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
     private bindEvent() {
         this.controller.on('UseProp', this.onUseProp, this);
+        this.controller.on('NextLevel', this.onNextLevel, this);
+    }
+
+    private offEvent() {
+        this.controller.off('UseProp', this.onUseProp, this);
+        this.controller.off('NextLevel', this.onNextLevel, this);
     }
 
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
@@ -107,7 +110,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
     onHide(result: undefined) {
         // app.manager.ui.show<PageGamellk>({name: 'PageGamellk', onHide:(result) => { 接收到return的数据，并且有类型提示 }})
-        this.controller.off('UseProp', this.onUseProp, this);
+        this.offEvent();
         return result;
     }
 
@@ -131,8 +134,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     private level_cfg: GameConfig = null;
     private initGame(lv: number) {
 
-        this.label_title.string = `LEVEL ${lv}`;
-
         const level_index = lv > this.LEVELS.length ? 20 + randomRangeInt(0, 30) : lv - 1;
 
         this.level_cfg = this.LEVELS[level_index];
@@ -145,8 +146,9 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         const itemScale = this.stageWidth / this.level_cfg.cols / ITEM_SIZE;
         this.itemSize = itemScale * ITEM_SIZE;
         this.startX = -this.stageWidth / 2 - this.itemSize / 2;
-        this.startY = this.stageHeight / 2 + this.itemSize / 2 - 250;
 
+        const levelHeight = this.itemSize * this.level_cfg.rows;
+        this.startY = levelHeight / 2 + this.itemSize / 2;
 
         // 初始化网格
         for (let row = 0; row <= this.level_cfg.rows + 1; row++) {
@@ -171,6 +173,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
             for (let col = 1; col <= cols; col++) {
                 const type: number = this.item_types[index++];;
                 const gameItem: GameItem = this.creatorGameItem(type, row, col);
+                // this.anima_item_enter_play(gameItem, randomRange(0, 1.5));
                 this.anima_item_enter_play(gameItem, (row * cols + col) * 0.015);
             }
         }
@@ -378,24 +381,30 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         }
     }
 
+    private clear() {
+
+    }
+
+    // 下一关
+    private onNextLevel(level: number) {
+        this.clear();
+        this.currentLevel = level;
+        this.initGame(this.currentLevel);
+    }
+
+
     /** 游戏结束 */
     private onGameEnd(suc: number) {
         if (this.game_state === "end") return;
         this.game_state = "end";
 
         tween(this.node).delay(1).call(() => {
-
             if (suc) {
-                app.manager.ui.showToast("恭喜过关！！");
+                this.controller.gameEnd(true);
             } else {
-
-                app.manager.ui.showToast("恭喜失败！！");
+                this.controller.gameEnd(false);
             }
-        }).delay(2).call(() => {
-            this.initGame(++this.currentLevel);
         }).start();
-
-
     }
 
     /** 重新排序item层级 */
@@ -445,6 +454,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
             this.startY - row * this.itemSize,
         ];
     }
+
 
     /** 移除item */
     private removeItem(item: GameItem) {
@@ -1041,6 +1051,13 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
     private anima_item_enter_play(item: GameItem, delay: number) {
         const opacity: UIOpacity = item.node.getComponent(UIOpacity);
+        // opacity.opacity = 0;
+        // const y = item.node.position.y;
+        // item.node.setPosition(item.node.position.x, y + 80);
+        // tween(item.node).delay(delay).to(0.5, { position: v3(item.node.x, y) }, { easing: 'sineOut' }).start();
+        // tween(opacity).delay(delay).to(0.5, { opacity: 255 }).start();
+
+        // return;
         if (delay > 0) {
             tween(opacity).set({ opacity: 0 }).delay(delay).to(0.3, { opacity: 255 }).start();
             tween(item.node).set({ scale: v3(0, 0, 1) }).delay(delay).to(0.5, { scale: v3(item.originScale, item.originScale, 1) }, { easing: 'backOut' }).start();
@@ -1226,27 +1243,5 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
         return v2(x, y).add(b);
     }
-
-
-    /**
-     *         // 播放动画
-            this.anima_item_to_list(item, (i) => {
-                if (this.elimi_list.length < 3) return;
-                this.check_elimination(item.type)?.forEach(e => {
-                    app.manager.game.putItem(e.node);
-                    e.node = null;
-                });
-                this.rearrange_list();
-                this.elimi_list.forEach(i => this.anima_item_move(i));
-            });
-     * 
-     * 
-     * 
-     * 
-     * 
-     */
-
-
-
 
 }
