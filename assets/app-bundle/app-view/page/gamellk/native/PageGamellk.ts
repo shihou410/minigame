@@ -25,6 +25,7 @@ type GameConfig = {
     cols: number,
     totleTypes: number,
     probability: number,
+    margin?: number
 }
 
 type GameItem = {
@@ -141,7 +142,8 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.pairedStart = randomRangeInt(0, 4);
         this.itemID = 0;
         const uit = this.layer_items.getComponent(UITransform);
-        this.stageWidth = uit.width - 60;
+        const margin = this.level_cfg.margin ? this.level_cfg.margin : 60;
+        this.stageWidth = uit.width - margin;
         this.stageHeight = uit.height;
         const itemScale = this.stageWidth / this.level_cfg.cols / ITEM_SIZE;
         this.itemSize = itemScale * ITEM_SIZE;
@@ -276,8 +278,15 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     private startGame() {
         if (!this.hasAnyPair()) {
             this.shuffleUntilSolvable();
+            this.gameGrid.forEach(rows => {
+                rows.forEach(item => {
+                    if (item?.node) {
+                        const pos = this.gridToNode(item.row, item.col);
+                        item.node.position.set(pos[0], pos[1]);
+                    }
+                });
+            });
         }
-
         this.game_state = "plaing";
     }
 
@@ -336,8 +345,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     }
 
 
-    private itemA: GameItem = null;
-    private itemB: GameItem = null;
     /** 开始配对 */
     private startPairing(itemA: GameItem, itemB: GameItem) {
         const path = this.tryConnectWithPath(itemA.row, itemA.col, itemB.row, itemB.col);
@@ -349,9 +356,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
             this.drawPath(path, 0.3);
             this.removeItem(itemA);
             this.removeItem(itemB);
-
-
-
 
             //是否出现新的item
             if (this.pairedCount > 3 && randomRangeInt(0, 100) < this.level_cfg.probability) {
@@ -378,12 +382,13 @@ export class PageGamellk extends BaseView.BindController(GameController) {
                     this.anima_refresh_play(0.5);
                 }, 0.3);
             }
+        } else {
+            this.anima_item_error(itemA);
+            this.anima_item_error(itemB);
         }
     }
 
-    private clear() {
-
-    }
+    private clear() { }
 
     // 下一关
     private onNextLevel(level: number) {
@@ -409,15 +414,14 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
     /** 重新排序item层级 */
     private sortItem() {
-        let index = 0;
+        const items: GameItem[] = [];
         for (let row = 1; row <= this.level_cfg.rows; row++) {
             for (let col = 1; col <= this.level_cfg.cols; col++) {
                 const item = this.gameGrid[row][col];
-                if (item) {
-                    item.node.setSiblingIndex(index++);
-                }
+                if (item) items.push(item);
             }
         }
+        items.sort((a, b) => { return a.row - b.row; }).forEach((item: GameItem, index: number) => item.node.setSiblingIndex(index));
     }
 
     /** 出现item */
@@ -1032,7 +1036,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
             ).set({ angle: 0 }).start();
     }
 
-
     private anima_move_play(duration: number) {
 
         for (let row = 1; row <= this.level_cfg.rows; row++) {
@@ -1047,6 +1050,32 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     private anima_item_move_play(item: GameItem, duration: number) {
         const pos = this.gridToNode(item.row, item.col);
         tween(item.node).to(duration, { position: v3(pos[0], pos[1]) }, { easing: 'sineIn' }).start();
+    }
+
+    private anima_item_error(item: GameItem) {
+        if (!item || !item.node) return;
+
+        // 停掉之前的动画（防止叠加卡顿）
+        if ((item as any)._errorTween) { return; }
+
+        const node = item.node;
+        const originalX = node.position.x;
+
+        const shakeDist = 12;   // 摇晃幅度
+        const shakeTime = 0.05; // 每次摇晃的时间
+
+        const t = tween(node)
+            .to(shakeTime, { position: v3(originalX - shakeDist, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX + shakeDist, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX - shakeDist * 0.6, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX + shakeDist * 0.6, node.position.y, 0) })
+            .to(shakeTime, { position: v3(originalX, node.position.y, 0) })
+            .call(() => {
+                (item as any)._errorTween = null;
+            });
+
+        (item as any)._errorTween = t;
+        t.start();
     }
 
     private anima_item_enter_play(item: GameItem, delay: number) {
@@ -1208,6 +1237,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
         this.shuffleUntilSolvable();
         this.anima_refresh_play2(1);
+
     }
 
     /**

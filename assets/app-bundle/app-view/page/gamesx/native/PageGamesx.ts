@@ -480,11 +480,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private anima_item_error(item: GameItem) {
         if (!item || !item.node) return;
 
-        // 停掉之前的动画（防止叠加卡顿）
-        if ((item as any)._errorTween) {
-            (item as any)._errorTween.stop();
-            (item as any)._errorTween = null;
-        }
+        if ((item as any)._errorTween) { return; }
 
         const node = item.node;
         const originalX = node.position.x;
