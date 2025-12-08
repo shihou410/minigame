@@ -91,11 +91,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private bindEvent() {
         this.controller.on('NextLevel', this.nextLevel, this);
         this.controller.on('UseProp', this.useProp, this);
+        this.controller.on('RefreshLevel', this.nextLevel, this);
     }
 
     private offEvent() {
         this.controller.off('NextLevel', this.nextLevel, this);
         this.controller.off('UseProp', this.useProp, this);
+        this.controller.off('RefreshLevel', this.nextLevel, this);
     }
 
     // 界面打开时的相关逻辑写在 onShow，可被多次调用
@@ -585,9 +587,80 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     /** 使用道具 */
     private useProp(type: number) {
 
+        switch (type) {
+            case 0: // 提示道具
+                this.gameTip();
+                break;
+
+            case 1: // 消除道具
+                this.gameElimi();
+                break;
+            case 2: // 刷新道具
+                this.gameRefresh();
+                break;
+        }
+
+
+    }
+
+    private tipMap: Map<number, GameItem[]> = new Map();
+    private gameTip() {
+        this.tipMap.clear();
+        let items: GameItem[] = [];
+        this.game_items.forEach(layer => layer.forEach(item => !item.isBlock && items.push(item)));
+
+        items.forEach(item => {
+            if (this.tipMap.has(item.type)) {
+                this.tipMap.get(item.type).push(item);
+            } else {
+                this.tipMap.set(item.type, [item]);
+            }
+        });
+
+        for (const [key, value] of this.tipMap) {
+            if (value.length >= 3) {
+                value.splice(0, 3).forEach(item => this.item_click(item)); return;
+            }
+        }
     }
 
 
+    private gameElimi() {
+        this.tipMap.clear();
+        let items: GameItem[] = [];
+        this.game_items.forEach(layer => layer.forEach(item => !item.isBlock && items.push(item)));
+
+
+        this.elimi_list.forEach(item => {
+            if (this.tipMap.has(item.type)) {
+                this.tipMap.get(item.type).push(item);
+            } else {
+                this.tipMap.set(item.type, [item]);
+            }
+        });
+        items.forEach(item => {
+            if (this.tipMap.has(item.type)) {
+                this.tipMap.get(item.type).push(item);
+            } else {
+                this.tipMap.set(item.type, [item]);
+            }
+        });
+
+
+        for (const [key, value] of this.tipMap) {
+            if (value.length >= 3) {
+                value.splice(0, 3).forEach(item => {
+                    !item.isLanded && this.item_click(item);
+                });
+                return;
+            }
+        }
+    }
+
+
+    private gameRefresh() {
+
+    }
 
 
 }

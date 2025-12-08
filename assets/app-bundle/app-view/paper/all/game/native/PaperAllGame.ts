@@ -15,7 +15,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
 
         this.content = this.node.getChildByName('content');
         this.proplist = this.content.getChildByName('PropList');
-        this.title = this.content.getChildByName('title').getComponent(Label);
+        this.title = this.content.getChildByName('title').getComponentInChildren(Label);
         this.btns_node = this.content.getChildByName('btns');
 
         this.bindEvent();
@@ -37,7 +37,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
     onShow(params: any) {
         this.level_number = params.level;
-        this.title.string = `第${this.level_number}关`;
+        this.title.string = this.level_number.toString();
     }
 
 
@@ -78,6 +78,8 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
             app.manager.ui.show({ name: 'PageHome' });
         } else if (name.startsWith('set')) {
             // app.manager.ui.show({ name: 'PageGamesx' });
+        } else if (name.startsWith('refresh')) {
+            app.controller.game.refreshLevel(this.level_number);
         }
     }
 

@@ -4,6 +4,7 @@ export class GameController extends BaseController<GameController, {
     UseProp: (type: number) => void;
     NextLevel: (level: number) => void;
     GameEnd: (suc: boolean) => void;
+    RefreshLevel: (level: number) => void;
 }>() {
     // Controller中发射事件, UI中监听事件:
     // 1、UI中需要将 「extends BaseView」 改为=> 「extends BaseView.bindController(GameController)」
@@ -12,5 +13,5 @@ export class GameController extends BaseController<GameController, {
     useProp(type: number) { this.emit(GameController.Event.UseProp, type); }
     gameEnd(suc: boolean) { this.emit(GameController.Event.GameEnd, suc); }
     nextLevel(level: number) { this.emit(GameController.Event.NextLevel, level); }
-
+    refreshLevel(level: number) { this.emit(GameController.Event.RefreshLevel, level); }
 }
