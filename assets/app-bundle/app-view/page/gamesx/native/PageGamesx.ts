@@ -1,4 +1,4 @@
-﻿import { _decorator, Asset, Color, ConfigurableConstraint, instantiate, JsonAsset, math, Node, NodeEventType, Prefab, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
+﻿import { _decorator, Asset, Color, ConfigurableConstraint, instantiate, JsonAsset, math, Node, NodeEventType, Prefab, randomRangeInt, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
@@ -35,7 +35,8 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private layer_itme_list: Node = null;
     /** 暂时存放 item 的节点 */
     private layer_temp: Node = null;
-
+    /** 遮罩节点 */
+    private layer_mask: Node = null;
 
     private eff_put: Prefab = null;
 
@@ -75,6 +76,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         this.layer_instance = this.content.getChildByName('layer_instance');
         this.layer_itme_list = this.content.getChildByName('layer_list');
         this.layer_temp = this.content.getChildByName('layer_temp');
+        this.layer_mask = this.content.getChildByName('layer_mask');
 
         app.manager.loader.load({
             path: 'prefab/effect_item_put',
@@ -125,6 +127,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     // 界面关闭时的相关逻辑写在 onHide
     onHide(result: undefined) {
         this.offEvent();
+        this.clearLevel();
         return result;
     }
 
@@ -149,7 +152,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         this.current_step = step;
         this.currentItemLength = 0;
         this.isXiaoChu = false;
-
+        this.layer_mask.getComponent(UIOpacity).opacity = 0;
         this.max_step = this.current_level_config.length;
 
         const stepConfig = this.current_level_config[this.current_step];
@@ -187,14 +190,17 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         const items = this.refresh_block_state();
         this.anima_enter(() => {
             items.forEach(item => this.anima_item_color(item, Color.WHITE, GRAY_COLOR));
+            this.startGame();
         });
 
-        this.startGame();
+        console.log("游戏数据：", this.game_items);
+
     }
 
     private readonly list_item_scale: number = 0.86;
     private startGame() {
         this.gameState = 'start';
+        this.controller.gameRestore();
     }
 
     private generateLayer(layers: number, centerx: number, centery: number) {
@@ -249,7 +255,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         return [col * this.itemSize, row * this.itemSize + 80];
     }
 
-    private item_click(item: GameItem) {
+    private item_click(item: GameItem, isMagic: boolean = false) {
         if (this.gameState === 'end') return;
 
         // 新增：被遮挡不能点
@@ -263,11 +269,11 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         let length = 0;
         this.game_items.forEach(v => { length += v.length; });
 
-        if (this.currentItemLength < ITEM_LIST_MAX) this.list_put(item);
+        if (this.currentItemLength < ITEM_LIST_MAX) this.list_put(item, isMagic);
 
     }
 
-    private list_put(item: GameItem) {
+    private list_put(item: GameItem, isMagic: boolean) {
 
         //先获取所有被遮挡的item
         const tempItems: GameItem[] = [];
@@ -283,18 +289,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         const same = this.elimi_list.filter(i => { return i.type !== -1 && i.type === item.type; });
         if (same.length >= 3) { same.forEach(i => { i.type = -1; }); }
 
-        this.list_refresh_leng();
+        if (!isMagic) this.list_refresh_leng();
 
         // 从原层移除
-        const layerItems = this.game_items[item.layer];
-        const f = layerItems.findIndex(v => v.id === item.id);
-        if (f >= 0) { layerItems.splice(f, 1); }
+        this.removeItemFromGrid(item);
 
         // 添加到收集区节点，保持原世界坐标避免跳动
-        const ws = item.node.worldPosition;
-        const pos = this.layer_itme_list.getComponent(UITransform).convertToNodeSpaceAR(ws);
-        this.layer_itme_list.addChild(item.node);
-        item.node.position = pos;
+        this.changeLayer(item, this.layer_itme_list);
         // item.node.setScale(this.list_item_scale, this.list_item_scale);
 
         //起飞
@@ -357,6 +358,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             }
         }
 
+        // console.log(this.layer_itme_list.children.length);
     }
 
     private refresh_block_state(): GameItem[] {
@@ -448,6 +450,21 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         });
     }
 
+    // 切换图层
+    private changeLayer(item: GameItem, target: Node) {
+        const ws = item.node.worldPosition;
+        const pos = target.getComponent(UITransform).convertToNodeSpaceAR(ws);
+        target.addChild(item.node);
+        item.node.position = pos;
+    }
+
+    // 从原层中移除
+    private removeItemFromGrid(item: GameItem) {
+        const layerItems = this.game_items[item.layer];
+        const f = layerItems.findIndex(v => v.id === item.id);
+        if (f >= 0) { layerItems.splice(f, 1); }
+    }
+
     private eff_put_play(item: GameItem) {
         if (!this.eff_put) return;
 
@@ -531,10 +548,11 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
     private tempColor: Color = new Color(255, 255, 255, 255);
     // item换色
-    private anima_item_color(item: GameItem, sColor: Color, dColor: Color) {
+    private anima_item_color(item: GameItem, sColor: Color, dColor: Color, duration: number = 0.3) {
         this.tempColor.set(sColor.r, sColor.g, sColor.b, sColor.a);
         tween(this.tempColor).to(0.3, { r: dColor.r, g: dColor.g, b: dColor.b, a: dColor.a }, {
             onUpdate: (target, ratio) => {
+                if (!item.node) return;
                 item.node.getChildByName('normal').getComponent(Sprite).color = this.tempColor;
                 item.node.getChildByName('spr').getComponent(Sprite).color = this.tempColor;
             },
@@ -549,8 +567,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     private clearLevel() {
+        this.game_items.forEach(layer => layer.forEach(item => {
+            item.node.targetOff(NodeEventType.TOUCH_START);
+            item.node && app.manager.game.putItem(item.node);
+        }));
         this.layer_instance.removeAllChildren();
         this.layer_itme_list.removeAllChildren();
+        this.layer_temp.removeAllChildren();
     }
 
     /** 下一轮 */
@@ -605,7 +628,8 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
     private tipMap: Map<number, GameItem[]> = new Map();
     private gameTip() {
-        this.tipMap.clear();
+
+
         let items: GameItem[] = [];
         this.game_items.forEach(layer => layer.forEach(item => !item.isBlock && items.push(item)));
 
@@ -626,35 +650,64 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
 
     private gameElimi() {
-        this.tipMap.clear();
+        if (this.gameState === "end") return;
+        app.manager.ui.setTouchEnabled(false);
         let items: GameItem[] = [];
-        this.game_items.forEach(layer => layer.forEach(item => !item.isBlock && items.push(item)));
 
-
-        this.elimi_list.forEach(item => {
-            if (this.tipMap.has(item.type)) {
-                this.tipMap.get(item.type).push(item);
-            } else {
-                this.tipMap.set(item.type, [item]);
+        let type = 0;
+        if (this.elimi_list.length <= 0) {
+            let layer = this.game_items[this.game_items.length - 1];
+            for (let i = this.game_items.length - 1; i >= 0; i--) {
+                if (this.game_items[i].length !== 0) {
+                    layer = this.game_items[i];
+                    break;
+                }
             }
-        });
-        items.forEach(item => {
-            if (this.tipMap.has(item.type)) {
-                this.tipMap.get(item.type).push(item);
-            } else {
-                this.tipMap.set(item.type, [item]);
-            }
-        });
-
-
-        for (const [key, value] of this.tipMap) {
-            if (value.length >= 3) {
-                value.splice(0, 3).forEach(item => {
-                    !item.isLanded && this.item_click(item);
-                });
-                return;
+            if (layer) {
+                type = layer[randomRangeInt(0, layer.length)].type;
+            } else return;
+        } else {
+            type = this.elimi_list[randomRangeInt(0, this.elimi_list.length)].type;
+            for (const index in this.elimi_list) {
+                if (items.length >= 3) break;
+                if (this.elimi_list[index].type === type) {
+                    items.push(this.elimi_list[index]);
+                }
             }
         }
+        for (let i = this.game_items.length - 1; i >= 0; i--) {
+            if (items.length >= 3) break;
+            const layer = this.game_items[i];
+            for (const j in layer) {
+                if (items.length >= 3) break;
+                const item = layer[j];
+                if (item.type === type) {
+                    items.push(item);
+                }
+            }
+        }
+        const uio = this.layer_mask.getComponent(UIOpacity);
+        tween(uio)
+            .to(0.5, { opacity: 155 })
+            .call(() => {
+                items.forEach((item, index) => {
+                    if (!item.isLanded) {
+                        this.changeLayer(item, this.layer_temp)
+                        item.isBlock && this.anima_item_color(item, GRAY_COLOR, Color.WHITE, 0.5);
+                        item.isBlock = false;
+                    }
+                });
+            })
+            .delay(0.8)
+            .to(0.5, { opacity: 0 })
+            .call(() => {
+                items.forEach((item, index) => {
+                    if (!item.isLanded)
+                        this.scheduleOnce(() => this.item_click(item, true), 0.2 * index + 0.2);
+                });
+            }).delay(1.2).call(() => {
+                app.manager.ui.setTouchEnabled(true);
+            }).start();
     }
 
 

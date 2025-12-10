@@ -85,8 +85,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         task.start((suc) => {
             app.manager.ui.hideLoading(uid);
             if (suc) {
-                this.showMiniViews({ views: this.miniViews, data: { level: 1 } });
-                // return;
                 this.initGame(this.currentLevel);
             }
         });
@@ -163,6 +161,9 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.item_types = this.generatePairedTypes(this.level_cfg.totleTypes, lv);
 
         this.generateGrid(this.level_cfg.rows, this.level_cfg.cols, this.layer_items);
+
+
+        this.showMiniViews({ views: this.miniViews, data: { level: 1, time: this.level_cfg.time } });
 
         this.startGame();
 
@@ -287,6 +288,9 @@ export class PageGamellk extends BaseView.BindController(GameController) {
                 });
             });
         }
+
+        this.controller.gameRestore();
+
         this.game_state = "plaing";
     }
 

@@ -1,4 +1,4 @@
-import { _decorator, Label, Node, NodeEventType } from 'cc';
+import { _decorator, Button, Label, Node, NodeEventType } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
@@ -22,8 +22,8 @@ export class PageHome extends BaseView {
 
         const label_level = this.xxlBtn.getComponentInChildren(Label);
 
-        this.xxlBtn.on(NodeEventType.TOUCH_START, this.onClickXXl, this);
-        this.lllBtn.on(NodeEventType.TOUCH_START, this.onClickLLl, this);
+        this.xxlBtn.on(Button.EventType.CLICK, this.onClickXXl, this);
+        this.lllBtn.on(Button.EventType.CLICK, this.onClickLLl, this);
 
         label_level.string = `LEVEL 1`;
     }
@@ -40,10 +40,11 @@ export class PageHome extends BaseView {
     }
 
     private onClickXXl() {
-        app.manager.ui.showAsync({ name: "PageGamesx", data: { level: 888 } });
+        app.manager.ui.showAsync({ name: "PageGamesx", data: { level: 10 } });
     }
 
     private onClickLLl() {
         app.manager.ui.showAsync({ name: "PageGamellk", data: { level: 1 } });
     }
+
 }

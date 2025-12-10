@@ -5,6 +5,8 @@ export class GameController extends BaseController<GameController, {
     NextLevel: (level: number) => void;
     GameEnd: (suc: boolean) => void;
     RefreshLevel: (level: number) => void;
+    GamePause: () => void;
+    GameRestore: () => void;
 }>() {
     // Controller中发射事件, UI中监听事件:
     // 1、UI中需要将 「extends BaseView」 改为=> 「extends BaseView.bindController(GameController)」
@@ -14,4 +16,6 @@ export class GameController extends BaseController<GameController, {
     gameEnd(suc: boolean) { this.emit(GameController.Event.GameEnd, suc); }
     nextLevel(level: number) { this.emit(GameController.Event.NextLevel, level); }
     refreshLevel(level: number) { this.emit(GameController.Event.RefreshLevel, level); }
+    gamePause() { this.emit(GameController.Event.GamePause); }
+    gameRestore() { this.emit(GameController.Event.GameRestore); }
 }

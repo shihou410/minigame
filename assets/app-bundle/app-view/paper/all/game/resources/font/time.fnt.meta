@@ -1,29 +1,24 @@
 {
-  "ver": "1.0.1",
-  "importer": "label-atlas",
+  "ver": "1.0.6",
+  "importer": "bitmap-font",
   "imported": true,
-  "uuid": "1e2efc41-a6d2-4be3-9fc9-559fe832d5de",
+  "uuid": "73d5ee35-67bf-4cd7-91af-ba0bec1e1473",
   "files": [
     ".json"
   ],
   "subMetas": {},
   "userData": {
-    "itemWidth": 22,
-    "itemHeight": 48,
-    "fontSize": 42.24,
-    "startChar": "0",
-    "spriteFrameUuid": "20f87fff-5547-44f7-a13b-a62bfbc6e94b@f9941",
     "_fntConfig": {
-      "commonHeight": 48,
-      "fontSize": 42,
-      "atlasName": "time",
+      "commonHeight": 32,
+      "fontSize": 32,
+      "atlasName": "time_0.png",
       "fontDefDictionary": {
         "48": {
           "rect": {
             "x": 0,
             "y": 0,
             "width": 22,
-            "height": 48
+            "height": 33
           },
           "xOffset": 0,
           "yOffset": 0,
@@ -31,21 +26,21 @@
         },
         "49": {
           "rect": {
-            "x": 22,
+            "x": 216,
             "y": 0,
-            "width": 22,
-            "height": 48
+            "width": 13,
+            "height": 31
           },
           "xOffset": 0,
           "yOffset": 0,
-          "xAdvance": 22
+          "xAdvance": 13
         },
         "50": {
           "rect": {
-            "x": 44,
+            "x": 124,
             "y": 0,
             "width": 22,
-            "height": 48
+            "height": 32
           },
           "xOffset": 0,
           "yOffset": 0,
@@ -53,43 +48,43 @@
         },
         "51": {
           "rect": {
-            "x": 66,
+            "x": 69,
             "y": 0,
-            "width": 22,
-            "height": 48
+            "width": 21,
+            "height": 33
           },
           "xOffset": 0,
           "yOffset": 0,
-          "xAdvance": 22
+          "xAdvance": 21
         },
         "52": {
           "rect": {
-            "x": 88,
+            "x": 169,
             "y": 0,
-            "width": 22,
-            "height": 48
+            "width": 24,
+            "height": 31
           },
           "xOffset": 0,
           "yOffset": 0,
-          "xAdvance": 22
+          "xAdvance": 24
         },
         "53": {
           "rect": {
-            "x": 110,
+            "x": 147,
             "y": 0,
-            "width": 22,
-            "height": 48
+            "width": 21,
+            "height": 32
           },
           "xOffset": 0,
           "yOffset": 0,
-          "xAdvance": 22
+          "xAdvance": 21
         },
         "54": {
           "rect": {
-            "x": 132,
+            "x": 23,
             "y": 0,
             "width": 22,
-            "height": 48
+            "height": 33
           },
           "xOffset": 0,
           "yOffset": 0,
@@ -97,21 +92,21 @@
         },
         "55": {
           "rect": {
-            "x": 154,
+            "x": 194,
             "y": 0,
-            "width": 22,
-            "height": 48
+            "width": 21,
+            "height": 31
           },
           "xOffset": 0,
           "yOffset": 0,
-          "xAdvance": 22
+          "xAdvance": 21
         },
         "56": {
           "rect": {
-            "x": 176,
+            "x": 46,
             "y": 0,
             "width": 22,
-            "height": 48
+            "height": 33
           },
           "xOffset": 0,
           "yOffset": 0,
@@ -119,17 +114,30 @@
         },
         "57": {
           "rect": {
-            "x": 198,
+            "x": 91,
             "y": 0,
-            "width": 22,
-            "height": 48
+            "width": 21,
+            "height": 33
           },
           "xOffset": 0,
           "yOffset": 0,
-          "xAdvance": 22
+          "xAdvance": 21
+        },
+        "58": {
+          "rect": {
+            "x": 113,
+            "y": 0,
+            "width": 10,
+            "height": 33
+          },
+          "xOffset": 0,
+          "yOffset": 0,
+          "xAdvance": 10
         }
       },
       "kerningDict": {}
-    }
+    },
+    "fontSize": 32,
+    "textureUuid": "652c32a7-e181-46f8-89eb-dff8247740aa"
   }
 }

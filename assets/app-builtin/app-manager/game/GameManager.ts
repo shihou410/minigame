@@ -1,4 +1,4 @@
-import { _decorator, instantiate, NodePool, Prefab, Sprite, SpriteAtlas, Node, SpriteFrame } from 'cc';
+import { _decorator, instantiate, NodePool, Prefab, Sprite, SpriteAtlas, Node, SpriteFrame, Tween, Color } from 'cc';
 import BaseManager from '../../../../extensions/app/assets/base/BaseManager';
 import { app } from 'db://assets/app/app';
 const { ccclass, property } = _decorator;
@@ -17,7 +17,7 @@ export class GameManager extends BaseManager {
     // [无序] 自身初始化完成, init执行完毕后被调用
     protected onInited() {
         this.item_pool = new NodePool();
-        this.creatorItems(20);
+        this.creatorItems(120);
     }
 
     // [无序] 所有manager初始化完成
@@ -75,10 +75,15 @@ export class GameManager extends BaseManager {
     }
 
     public putItem(item: Node): void {
-        item.getChildByName('spr').getComponent(Sprite).spriteFrame = null;
-        item.targetOff(item);
         this.item_pool.put(item);
-
+        Tween.stopAllByTarget(item);
+        item.getChildByName('spr').getComponent(Sprite).spriteFrame = null;
+        item.getChildByName('spr').getComponent(Sprite).color = Color.WHITE;
+        item.getChildByName('normal').getComponent(Sprite).color = Color.WHITE;
+        item.getChildByName('selected').active = false;
+        item.targetOff(item);
+        item.setScale(1, 1, 1);
+        item.setPosition(0, 0, 0);
     }
 
     public getSpriteFrameByName(name: string): SpriteFrame {
