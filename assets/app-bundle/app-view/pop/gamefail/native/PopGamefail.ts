@@ -17,6 +17,7 @@ export class PopGamefail extends BaseView.BindController(GameController) {
         this.backBtn = this.content.getChildByName('backBtn');
         this.retryBtn = this.content.getChildByName('retryBtn');
 
+        
         this.backBtn.on(Button.EventType.CLICK, this.onClickBack, this);
         this.retryBtn.on(Button.EventType.CLICK, this.onClickRetry, this);
 

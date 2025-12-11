@@ -10,6 +10,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     private proplist: Node = null;
     private title: Label = null;
     private timeL: Label = null;
+    private totalTime: number = 0;
 
     private _pause: boolean = true;
 
@@ -66,7 +67,8 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
     onShow(params: any) {
         this.level_number = params.level;
-        this.time = params.time || 300;
+        this.totalTime = params.time || 300;
+        this.time = this.totalTime;
         this.title.string = this.level_number.toString();
     }
 
@@ -111,8 +113,15 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         } else if (name.startsWith('set')) {
             // app.manager.ui.show({ name: 'PageGamesx' });
         } else if (name.startsWith('refresh')) {
-            app.controller.game.refreshLevel(this.level_number);
+            this.gameReTry();
         }
+    }
+
+    /** 游戏刷新 */
+    private gameReTry() {
+        this.time = this.totalTime;
+
+        app.controller.game.refreshLevel(this.level_number);
     }
 
     /** 游戏结束 */
