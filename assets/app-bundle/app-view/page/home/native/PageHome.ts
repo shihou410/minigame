@@ -9,21 +9,30 @@ export class PageHome extends BaseView {
     protected miniViews: IMiniViewNames = [];
 
     private content: Node = null;
-
+    private coinAdd: Node = null;
     private xxlBtn: Node = null;
     private lllBtn: Node = null;
-
+    private label_score: Label = null;
+    private label_coin: Label = null;
+    private setBtn: Node = null;
     // 初始化的相关逻辑写在这
     onLoad() {
 
         this.content = this.node.getChildByName('content');
-        this.xxlBtn = this.content.getChildByName('xxlBtn');
-        this.lllBtn = this.content.getChildByName('lllBtn');
+        this.xxlBtn = this.content.getChildByPath('gameBtn/xxlBtn');
+        this.lllBtn = this.content.getChildByPath('gameBtn/lllBtn');
+        this.coinAdd = this.content.getChildByPath('coin/btn');
+        this.setBtn = this.content.getChildByPath('btns/set');
 
+        this.label_score = this.content.getChildByPath('score/label').getComponent(Label);
+        this.label_coin = this.content.getChildByPath('coin/label').getComponent(Label);
         const label_level = this.xxlBtn.getComponentInChildren(Label);
+
 
         this.xxlBtn.on(Button.EventType.CLICK, this.onClickXXl, this);
         this.lllBtn.on(Button.EventType.CLICK, this.onClickLLl, this);
+        this.coinAdd.on(Button.EventType.CLICK, this.onClickCoinAdd, this);
+        this.setBtn.on(Button.EventType.CLICK, this.onClickSetBtn, this);
 
         label_level.string = `LEVEL 1`;
     }
@@ -31,6 +40,10 @@ export class PageHome extends BaseView {
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
     onShow(params: any) {
         this.showMiniViews({ views: this.miniViews });
+
+        this.label_coin.string = '999';
+        this.label_score.string = '999';
+
     }
 
     // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
@@ -45,6 +58,12 @@ export class PageHome extends BaseView {
 
     private onClickLLl() {
         app.manager.ui.showAsync({ name: "PageGamellk", data: { level: 1 } });
+    }
+
+    private onClickCoinAdd() { }
+
+    private onClickSetBtn() {
+        app.manager.ui.show({ name: 'PopSettings' });
     }
 
 }

@@ -1,4 +1,4 @@
-import { _decorator, Button, Node } from 'cc';
+import { _decorator, Button, Label, Node, ProgressBar } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { GameController } from 'db://assets/app-builtin/app-controller/GameController';
 const { ccclass, property } = _decorator;
@@ -7,16 +7,17 @@ export class PopGamesuccess extends BaseView.BindController(GameController) {
 
 
     private content: Node = null;
+    private label_title: Label = null;
 
-
+    private progress: ProgressBar = null;
     private nextBtn: Node = null;
     // 初始化的相关逻辑写在这
     onLoad() {
 
         this.content = this.node.getChildByName('content');
-
+        this.label_title = this.content.getChildByPath('title/label_title').getComponent(Label);
         this.nextBtn = this.content.getChildByName('nextBtn');
-
+        this.progress = this.content.getChildByName('progress').getComponent(ProgressBar);
         this.nextBtn.on(Button.EventType.CLICK, this.onClickNext, this);
     }
 

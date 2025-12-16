@@ -5,7 +5,7 @@ import { EDITOR,EDITOR_NOT_IN_PREVIEW } from 'cc/env';
 
 export type IReadOnly<T> = { readonly [P in keyof T]: T[P] extends Function ? T[P] : (T[P] extends Object ? IReadOnly<T[P]> : T[P]); };
 
-export type IViewName = "PageGamellk"|"PageGamesx"|"PageHome"|"PopGamefail"|"PopGamesuccess"
+export type IViewName = "PageGamellk"|"PageGamesx"|"PageHome"|"PopGamefail"|"PopGamesuccess"|"PopSettings"
 export type IViewNames = IViewName[]
 export type IMiniViewName = "PaperAllGame"
 export type IMiniViewNames = IMiniViewName[]

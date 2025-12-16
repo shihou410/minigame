@@ -64,7 +64,6 @@ export class GameManager extends BaseManager {
         }
     }
 
-
     public getItem(): Node {
         let item = this.item_pool.get();
         if (!item) {
