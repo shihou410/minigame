@@ -1,8 +1,13 @@
 import { _decorator, Button, Label, Node } from 'cc';
 import BaseView from '../../../../../../../extensions/app/assets/base/BaseView';
-import { GameController } from 'db://assets/app-builtin/app-controller/GameController';
+import { GameController, PropType } from 'db://assets/app-builtin/app-controller/GameController';
 import { app } from 'db://assets/app/app';
 const { ccclass, property } = _decorator;
+
+
+
+
+
 @ccclass('PaperAllGame')
 export class PaperAllGame extends BaseView.BindController(GameController) {
     private content: Node = null;
@@ -57,10 +62,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
 
     protected update(dt: number): void {
         if (this._pause) return;
-
         this.time -= dt;
-
-
     }
 
     private level_number: number = 0;
@@ -69,6 +71,17 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         this.level_number = params.level;
         this.totalTime = params.time || 300;
         this.time = this.totalTime;
+
+        const propTypeMask = params.marsk;
+
+        this.proplist.children.forEach((v, i) => {
+            if (((2 << i) & propTypeMask) > 0) {
+                v.active = true;
+            } else {
+                v.active = false;
+            }
+        });
+
         this.title.string = this.level_number.toString();
     }
 
@@ -86,21 +99,19 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     /** 点击道具 */
     private onClickProp(node: Node) {
         if (this._pause) return;
-
-
         const name = node.name;
         switch (name) {
-            case 'GamePopTip':  //提示道具
-                this.controller.useProp(0);
+            case 'GamePropTip':  //提示道具
+                this.controller.useProp(PropType.TS);
                 break;
             case 'GamePropElim':  //消除道具
-                this.controller.useProp(1);
+                this.controller.useProp(PropType.XC);
                 break;
             case 'GamePropRefresh':  //刷新道具
-                this.controller.useProp(2);
+                this.controller.useProp(PropType.SX);
                 break;
-            case 'GamePropPlier':  //钳子道具
-                this.controller.useProp(3);
+            case 'GamePropBack':  //撤回道具
+                this.controller.useProp(PropType.CH);
                 break;
         }
     }

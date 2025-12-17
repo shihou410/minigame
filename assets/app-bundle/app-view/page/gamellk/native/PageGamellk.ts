@@ -3,7 +3,7 @@ import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
 import { ASync } from 'db://app/lib/task/task';
-import { GameController } from 'db://assets/app-builtin/app-controller/GameController';
+import { GameController, PropType } from 'db://assets/app-builtin/app-controller/GameController';
 const { ccclass, property } = _decorator;
 
 const Level1: GameConfig = {
@@ -163,7 +163,14 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.generateGrid(this.level_cfg.rows, this.level_cfg.cols, this.layer_items);
 
 
-        this.showMiniViews({ views: this.miniViews, data: { level: 1, time: this.level_cfg.time } });
+        this.showMiniViews({
+            views: this.miniViews,
+            data: {
+                level: 1,
+                time: this.level_cfg.time,
+                marsk: PropType.XC | PropType.TS | PropType.SX
+            }
+        });
 
         this.startGame();
 

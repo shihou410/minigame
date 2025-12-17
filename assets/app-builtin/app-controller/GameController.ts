@@ -1,7 +1,20 @@
 import BaseController from '../../../extensions/app/assets/base/BaseController';
+
+/** 道具类型 */
+export enum PropType {
+    /** 提示 */
+    TS = 2 << 0,
+    /** 消除 */
+    XC = 2 << 1,
+    /** 刷新 */
+    SX = 2 << 2,
+    /** 撤回 */
+    CH = 2 << 3,
+}
+
 export class GameController extends BaseController<GameController, {
     // 定义了事件，并同时定义参数列表和返回值
-    UseProp: (type: number) => void;
+    UseProp: (type: PropType) => void;
     NextLevel: (level: number) => void;
     GameEnd: (suc: boolean) => void;
     RefreshLevel: (level: number) => void;
@@ -12,7 +25,7 @@ export class GameController extends BaseController<GameController, {
     // 1、UI中需要将 「extends BaseView」 改为=> 「extends BaseView.bindController(GameController)」
     // 2、UI中使用「this.controller.on/once」监听事件, 使用「this.controller.emit」发射事件, 使用「this.controller.off/targetOff」取消监听事件
     // 3、在外部(无法使用this.controller的地方)可以通过「app.controller.xxx」来调用对外导出的方法, 比如下面的refresh方法
-    useProp(type: number) { this.emit(GameController.Event.UseProp, type); }
+    useProp(type: PropType) { this.emit(GameController.Event.UseProp, type); }
     gameEnd(suc: boolean) { this.emit(GameController.Event.GameEnd, suc); }
     nextLevel(level: number) { this.emit(GameController.Event.NextLevel, level); }
     refreshLevel(level: number) { this.emit(GameController.Event.RefreshLevel, level); }

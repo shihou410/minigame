@@ -641,7 +641,7 @@
     "_overflow": 0,
     "_enableWrapText": true,
     "_font": {
-      "__uuid__": "1013a4b6-0a39-40f8-9f8e-396b93e44569",
+      "__uuid__": "2e6d29d3-23a0-43cf-b362-aa84dff69e6d",
       "__expectedType__": "cc.LabelAtlas"
     },
     "_isSystemFontUsed": false,
@@ -898,7 +898,7 @@
     "_overflow": 0,
     "_enableWrapText": true,
     "_font": {
-      "__uuid__": "1013a4b6-0a39-40f8-9f8e-396b93e44569",
+      "__uuid__": "2e6d29d3-23a0-43cf-b362-aa84dff69e6d",
       "__expectedType__": "cc.LabelAtlas"
     },
     "_isSystemFontUsed": false,

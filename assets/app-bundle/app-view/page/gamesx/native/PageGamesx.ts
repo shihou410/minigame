@@ -2,7 +2,7 @@
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
-import { GameController } from 'db://assets/app-builtin/app-controller/GameController';
+import { GameController, PropType } from 'db://assets/app-builtin/app-controller/GameController';
 const { ccclass } = _decorator;
 
 const ITEM_LIST_MAX: number = 7;
@@ -105,7 +105,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     // 界面打开时的相关逻辑写在 onShow，可被多次调用
     onShow(params: any) {
         this.current_level_number = params.level;
-        this.showMiniViews({ views: this.miniViews, data: { level: this.current_level_number } });
+        this.showMiniViews({
+            views: this.miniViews,
+            data: {
+                level: this.current_level_number,
+                marsk: PropType.XC | PropType.CH | PropType.SX
+            }
+        });
         this.current_level_path = `level/level_${Math.floor((this.current_level_number - 1) / 50)}`;
         this.loadLevel(this.current_level_path);
     }
