@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, EventTouch, Tween, tween, v3, Button } from 'cc';
+import { _decorator, Component, Node, EventTouch, Tween, tween, v3, Button, UIOpacity } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('ButtonScale')
@@ -10,6 +10,17 @@ export class ButtonScale extends Component {
     @property
     duration: number = 0.1;        // 单段动画时间
 
+    private _isClick: boolean = true;
+    public get isClick() { return this._isClick; }
+    public set isClick(value: boolean) {
+        this._isClick = value;
+        let uit = this.getComponent(UIOpacity);
+        if (!uit) uit = this.addComponent(UIOpacity);
+
+        const t = value ? 255 : 120;
+        tween(uit).to(0.3, { opacity: t }).start();
+
+    }
 
     onLoad() {
         this.node.on(Node.EventType.TOUCH_START, this.onPress, this);
@@ -18,6 +29,7 @@ export class ButtonScale extends Component {
     }
 
     onPress(event: EventTouch) {
+        if (!this._isClick) return;
         Tween.stopAllByTarget(this.node);
         tween(this.node)
             .to(this.duration, { scale: v3(this.pressedScale, this.pressedScale, 1) })
@@ -25,6 +37,7 @@ export class ButtonScale extends Component {
     }
 
     onCancel(event: EventTouch) {
+        if (!this._isClick) return;
         Tween.stopAllByTarget(this.node);
         tween(this.node)
             .to(this.duration, { scale: v3(1.1, 1.1, 1) })
@@ -33,6 +46,8 @@ export class ButtonScale extends Component {
     }
 
     onEnd(event: EventTouch) {
+        if (!this._isClick) return;
+
         Tween.stopAllByTarget(this.node);
         tween(this.node)
             .to(this.duration, { scale: v3(1.1, 1.1, 1) })

@@ -3,19 +3,20 @@ import BaseController from '../../../extensions/app/assets/base/BaseController';
 /** 道具类型 */
 export enum PropType {
     /** 提示 */
-    TS = 2 << 0,
+    TS = 1 << 0,
     /** 消除 */
-    XC = 2 << 1,
+    XC = 1 << 1,
     /** 刷新 */
-    SX = 2 << 2,
+    SX = 1 << 2,
     /** 撤回 */
-    CH = 2 << 3,
+    CH = 1 << 3,
 }
 
 export class GameController extends BaseController<GameController, {
     // 定义了事件，并同时定义参数列表和返回值
     UseProp: (type: PropType) => void;
     NextLevel: (level: number) => void;
+    GameStart: (level: number) => void;
     GameEnd: (suc: boolean) => void;
     RefreshLevel: (level: number) => void;
     GamePause: () => void;
@@ -31,4 +32,5 @@ export class GameController extends BaseController<GameController, {
     refreshLevel(level: number) { this.emit(GameController.Event.RefreshLevel, level); }
     gamePause() { this.emit(GameController.Event.GamePause); }
     gameRestore() { this.emit(GameController.Event.GameRestore); }
+    gameStart(level: number) { this.emit(GameController.Event.GameStart, level); }
 }

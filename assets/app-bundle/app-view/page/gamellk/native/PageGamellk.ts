@@ -297,7 +297,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         }
 
         this.controller.gameRestore();
-
         this.game_state = "plaing";
     }
 

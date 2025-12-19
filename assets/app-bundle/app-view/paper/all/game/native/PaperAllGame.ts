@@ -1,7 +1,8 @@
-import { _decorator, Button, Label, Node } from 'cc';
+import { _decorator, Button, Label, Node, tween, UIOpacity, v2, v3 } from 'cc';
 import BaseView from '../../../../../../../extensions/app/assets/base/BaseView';
 import { GameController, PropType } from 'db://assets/app-builtin/app-controller/GameController';
 import { app } from 'db://assets/app/app';
+import { ButtonScale } from './expansion/ButtonScale';
 const { ccclass, property } = _decorator;
 
 
@@ -34,17 +35,18 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     onLoad() {
 
         this.content = this.node.getChildByName('content');
-        this.proplist = this.content.getChildByName('PropList');
-        this.title = this.content.getChildByName('title').getComponentInChildren(Label);
-        this.btns_node = this.content.getChildByName('btns');
-        this.timeL = this.content.getChildByName('time').getComponent(Label);
+        this.proplist = this.content.getChildByPath('Bottom/PropList');
+        this.title = this.content.getChildByPath('Top/title').getComponentInChildren(Label);
+        this.btns_node = this.content.getChildByPath('Top/btns');
+        this.timeL = this.content.getChildByPath('Top/time').getComponent(Label);
         this.bindEvent();
     }
     bindEvent() {
         this.controller.on('GameEnd', this.onGameEnd, this);
         this.controller.on('NextLevel', this.onNextLevel, this);
         this.controller.on('GamePause', this.onGamePause, this);
-        this.controller.on('GameRestore', this.onGamerestore, this);
+        this.controller.on('GameRestore', this.onGameRestore, this);
+        this.controller.on('GameStart', this.onGameStart, this);
 
 
 
@@ -57,7 +59,9 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         this.controller.off('GameEnd', this.onGameEnd, this);
         this.controller.off('NextLevel', this.onNextLevel, this);
         this.controller.off('GamePause', this.onGamePause, this);
-        this.controller.off('GameRestore', this.onGamerestore, this);
+        this.controller.off('GameRestore', this.onGameRestore, this);
+        this.controller.off('GameStart', this.onGameStart, this);
+
     }
 
     protected update(dt: number): void {
@@ -75,14 +79,38 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         const propTypeMask = params.marsk;
 
         this.proplist.children.forEach((v, i) => {
-            if (((2 << i) & propTypeMask) > 0) {
-                v.active = true;
+            const uit = v.getComponent(UIOpacity);
+            const type = 1 << i;
+            if ((type & propTypeMask) > 0) {
+                v.getComponent(ButtonScale).isClick = true;
             } else {
-                v.active = false;
+                v.getComponent(ButtonScale).isClick = false;
+            }
+
+            const coin = v.getChildByName('coin');
+            const icon = v.getChildByName('icon');
+            const point = v.getChildByName('point');
+            const count = app.manager.game.getPropCount(type);
+            if (count <= 0) {
+                point.active = false;
+                coin.active = true;
+                icon.y = 20;
+                icon.setScale(0.7, 0.7);
+            } else {
+                point.active = true;
+                coin.active = false;
+                icon.y = 5;
+                icon.setScale(1, 1);
             }
         });
 
         this.title.string = this.level_number.toString();
+    }
+
+    private onGameStart(level: number) {
+        this.level_number = level;
+        this.title.string = `第${this.level_number}关`;
+        this.anima_enter();
     }
 
 
@@ -94,6 +122,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     private onNextLevel(level: number) {
         this.level_number = level;
         this.title.string = `第${this.level_number}关`;
+
     }
 
     /** 点击道具 */
@@ -137,13 +166,15 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
 
     /** 游戏结束 */
     private onGameEnd(suc: boolean) {
-        if (suc) app.manager.ui.show({ name: 'PopGamesuccess', data: { level: this.level_number } });
-        else app.manager.ui.show({ name: 'PopGamefail', data: { level: this.level_number } });
+        this.anima_end(() => {
+            if (suc) app.manager.ui.show({ name: 'PopGamesuccess', data: { level: this.level_number } });
+            else app.manager.ui.show({ name: 'PopGamefail', data: { level: this.level_number } });
+        });
     }
 
     /** 游戏暂停 */
     private onGamePause() { this._pause = true; }
-    private onGamerestore() { this._pause = false; }
+    private onGameRestore() { this._pause = false; }
 
     /**
     * 将秒数格式化为 HH:MM:SS 或 MM:SS 的时间字符串
@@ -166,6 +197,39 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         } else {
             return `${pad(minutes)}:${pad(remainingSeconds)}`;
         }
+    }
+
+    /** 开场动画 */
+    private anima_enter() {
+        tween(this.node)
+            .call(() => {
+
+                const top = this.content.getChildByName('Top');
+                top.children.forEach(e => {
+                    tween(e).set({ y: 200 }).to(0.5, { y: 0 }).start();
+                })
+
+                const bottom = this.content.getChildByName('Bottom');
+                bottom.children.forEach(e => {
+                    tween(e).set({ y: -300 }).to(0.5, { y: 0 }).start();
+                })
+            }).start();
+    }
+
+
+    private anima_end(call: () => void = null) {
+        tween(this.node)
+            .call(() => {
+                const top = this.content.getChildByName('Top');
+                top.children.forEach(e => {
+                    tween(e).set({ y: 0 }).to(0.5, { y: 200 }).start();
+                });
+
+                const bottom = this.content.getChildByName('Bottom');
+                bottom.children.forEach(e => {
+                    tween(e).set({ y: 0 }).to(0.5, { y: -300 }).start();
+                });
+            }).call(() => call && call()).start();
     }
 
 }

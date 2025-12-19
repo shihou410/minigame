@@ -5,7 +5,7 @@ import { app } from 'db://assets/app/app';
 const { ccclass, property } = _decorator;
 
 /** 游戏类型 */
-enum GameType {
+export enum GameType {
     /** 消消了 */
     LLL = 0,
     /** 连连了 */
@@ -24,7 +24,7 @@ export class PageHome extends BaseView {
     private coinAdd: Node = null;
     private xxlBtn: Node = null;
     private lllBtn: Node = null;
-    private setBtn: Node = null;
+    private btns: Node = null;
     private label_score: Label = null;
     private label_coin: Label = null;
     private label_lll: Label = null;
@@ -35,8 +35,9 @@ export class PageHome extends BaseView {
         this.content = this.node.getChildByName('content');
         this.xxlBtn = this.content.getChildByPath('gameBtn/xxlBtn');
         this.lllBtn = this.content.getChildByPath('gameBtn/lllBtn');
-        this.coinAdd = this.content.getChildByPath('coin/btn');
-        this.setBtn = this.content.getChildByPath('btns/set');
+        this.coinAdd = this.content.getChildByPath('coin');
+        this.btns = this.content.getChildByName('btns');
+
 
         this.label_score = this.content.getChildByPath('score/label').getComponent(Label);
         this.label_coin = this.content.getChildByPath('coin/label').getComponent(Label);
@@ -47,8 +48,7 @@ export class PageHome extends BaseView {
         this.xxlBtn.on(Button.EventType.CLICK, this.onClickXXl, this);
         this.lllBtn.on(Button.EventType.CLICK, this.onClickLLl, this);
         this.coinAdd.on(Button.EventType.CLICK, this.onClickCoinAdd, this);
-        this.setBtn.on(Button.EventType.CLICK, this.onClickSetBtn, this);
-
+        this.btns.children.forEach(v => v.on(Button.EventType.CLICK, this.onClickBtns, this));
 
     }
 
@@ -56,11 +56,11 @@ export class PageHome extends BaseView {
     onShow(params: any) {
         this.showMiniViews({ views: this.miniViews });
 
-        this.label_coin.string = '999';
-        this.label_score.string = '999';
+        this.label_coin.string = `${app.manager.game.getCoin()}`;
+        this.label_score.string = `${app.manager.game.getScore()}`;
 
-        this.label_xxl.string = "1";
-        this.label_lll.string = "1";
+        this.label_xxl.string = `${app.manager.game.getLevel(GameType.XXL)}`;
+        this.label_lll.string = `${app.manager.game.getLevel(GameType.LLL)}`;
     }
 
     // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
@@ -70,19 +70,22 @@ export class PageHome extends BaseView {
     }
 
     private onClickXXl() {
-        app.manager.ui.showAsync({ name: "PageGamesx", data: { level: 10 } });
+        app.manager.ui.showAsync({ name: "PageGamesx", data: { level: app.manager.game.getLevel(GameType.XXL) } });
     }
 
     private onClickLLl() {
-        app.manager.ui.showAsync({ name: "PageGamellk", data: { level: 1 } });
+        app.manager.ui.showAsync({ name: "PageGamellk", data: { level: app.manager.game.getLevel(GameType.LLL) } });
     }
 
     private onClickCoinAdd() {
         app.manager.ui.show({ name: 'PopShop' });
     }
 
-    private onClickSetBtn() {
-        app.manager.ui.show({ name: 'PopSettings' });
+    private onClickBtns(e: Node) {
+        const name = e.name;
+        if (name.startsWith('set')) {
+            app.manager.ui.show({ name: 'PopSettings' });
+        }
     }
 
 }

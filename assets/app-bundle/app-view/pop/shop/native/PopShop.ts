@@ -1,5 +1,6 @@
 import { _decorator, Button, Label, Node } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
+import { app } from 'db://assets/app/app';
 const { ccclass, property } = _decorator;
 @ccclass('PopShop')
 export class PopShop extends BaseView {
@@ -23,8 +24,7 @@ export class PopShop extends BaseView {
 
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
     onShow(params: any) {
-        const coinAmount = params.coinAmount || 0;
-        this.coin.string = `${coinAmount}`;
+        this.coin.string = `${app.manager.game.getCoin()}`;
     }
 
     // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
