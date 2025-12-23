@@ -44,6 +44,8 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
     private prefab_line: Prefab = null;
     private prefab_star: Prefab = null;
+    private prefab_eff_magic: Prefab = null;
+
 
     // 子界面列表，数组顺序为子界面排列顺序
     protected miniViews: IMiniViewNames = ['PaperAllGame'];
@@ -51,7 +53,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     private content: Node = null;
     private layer_items: Node = null;
     private layer_effect: Node = null;
-    private label_title: Label = null;
+    private layer_mask: Node = null;
     private game_state: "ready" | "plaing" | "pause" | "end" = "ready";
     private LEVELS: GameConfig[] = null;
     private currentLevel: number = 1;
@@ -59,7 +61,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.content = this.node.getChildByName('content');
         this.layer_items = this.content.getChildByName('layer_items');
         this.layer_effect = this.content.getChildByName('layer_effect');
-        this.label_title = this.content.getChildByName('label_title').getComponent(Label);
+        this.layer_mask = this.content.getChildByName('layer_mask');
         this.game_state = "ready";
 
         const uid = app.manager.ui.showLoading();
@@ -75,6 +77,17 @@ export class PageGamellk extends BaseView.BindController(GameController) {
                 this.prefab_line = res;
                 next();
             });
+        });
+        task.add((next, rery) => {
+            app.manager.loader.load({
+                path: 'prefab/effect_magic',
+                bundle: 'resources',
+                type: Prefab,
+                onComplete: (res) => {
+                    this.prefab_eff_magic = res;
+                    next();
+                }
+            })
         });
         task.add((next, rery) => {
             this.loadRes('prefab/GameStar', Prefab, (res: Prefab) => {
@@ -1226,13 +1239,12 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     }
 
     /** 使用道具 */
-    private onUseProp(type: number) {
+    private onUseProp(type: PropType, node: Node) {
         console.log("使用道具：", type);
         switch (type) {
-            case 0: this.useTipProp(); break;
-            case 1: break;
-            case 2: this.useRefreshProp(); break;
-            case 3: break;
+            case PropType.TS: this.useTipProp(); break;
+            case PropType.XC: this.useElimProp(node); break;
+            case PropType.SX: this.useRefreshProp(); break;
         }
     }
 
@@ -1243,6 +1255,64 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.tipItems && this.tipItems.forEach(item => this.anima_item_tip_play(item));
     }
 
+    /** 使用消除道具 */
+    private useElimProp(node: Node) {
+        const items: GameItem[] = [];
+        this.gameGrid.forEach(v => v.forEach(e => e && e.node && items.push(e)));
+
+        if (items.length < 4) return;
+
+        this.setTouchEnabled(false);
+        const uit = this.layer_mask.getComponent(UIOpacity);
+
+
+        let targetItems: GameItem[] = [];
+
+        for (let i = 0; i < 2; i++) {
+            const index1 = randomRangeInt(0, items.length);
+            const type = items[index1].type;
+            targetItems = targetItems.concat(items.splice(index1, 1));
+
+            const index2 = items.findIndex(e => { return e.type === type; });
+            targetItems = targetItems.concat(items.splice(index2, 1));
+        }
+
+        const ws = node.worldPosition;
+        tween(uit)
+            .to(0.3, { opacity: 155 })
+            .call(() => {
+                const duration = 1;
+                targetItems.forEach((e, i) => {
+                    const eff = instantiate(this.prefab_eff_magic);
+                    tween(eff)
+                        .delay(i * duration)
+                        .call(() => {
+                            this.layer_effect.addChild(eff);
+                            const ls = this.layer_effect.getComponent(UITransform).convertToNodeSpaceAR(ws);
+                            eff.setPosition(ls);
+
+                            const r = Math.atan2(e.node.y - eff.y, e.node.x - eff.x);
+                            eff.angle = math.toDegree(r);
+                        })
+                        .to(duration, { x: e.node.x, y: e.node.y })
+                        .call(() => {
+                            this.layer_effect.addChild(e.node);
+                            eff.destroyAllChildren();
+                        })
+                        .delay((targetItems.length - 1) * duration)
+                        .call(() => {
+                            this.removeItem(e);
+                            eff.destroy();
+                        }).start();
+                });
+            })
+            .delay(5)
+            .to(0.3, { opacity: 0 })
+            .call(() => this.setTouchEnabled(true))
+            .start();
+    }
+
+    /** 使用刷新道具 */
     private useRefreshProp() {
 
         this.shuffleUntilSolvable();

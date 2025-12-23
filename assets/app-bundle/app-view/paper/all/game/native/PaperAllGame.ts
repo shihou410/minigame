@@ -127,20 +127,20 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
 
     /** 点击道具 */
     private onClickProp(node: Node) {
-        if (this._pause) return;
+        // if (this._pause) return;
         const name = node.name;
         switch (name) {
             case 'GamePropTip':  //提示道具
-                this.controller.useProp(PropType.TS);
+                this.controller.useProp(PropType.TS, node);
                 break;
             case 'GamePropElim':  //消除道具
-                this.controller.useProp(PropType.XC);
+                this.controller.useProp(PropType.XC, node);
                 break;
             case 'GamePropRefresh':  //刷新道具
-                this.controller.useProp(PropType.SX);
+                this.controller.useProp(PropType.SX, node);
                 break;
             case 'GamePropBack':  //撤回道具
-                this.controller.useProp(PropType.CH);
+                this.controller.useProp(PropType.CH, node);
                 break;
         }
     }
