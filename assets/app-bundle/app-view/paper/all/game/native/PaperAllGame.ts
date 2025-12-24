@@ -151,7 +151,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         if (name.startsWith('back')) {
             app.manager.ui.show({ name: 'PageHome' });
         } else if (name.startsWith('set')) {
-            // app.manager.ui.show({ name: 'PageGamesx' });
+            app.manager.ui.show({ name: 'PopSettings' });
         } else if (name.startsWith('refresh')) {
             this.gameReTry();
         }

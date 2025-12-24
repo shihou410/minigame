@@ -2995,9 +2995,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 37,
-      "g": 61,
-      "b": 104,
+      "r": 240,
+      "g": 240,
+      "b": 240,
       "a": 255
     },
     "_string": "46",
@@ -3157,9 +3157,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 37,
-      "g": 61,
-      "b": 104,
+      "r": 255,
+      "g": 255,
+      "b": 255,
       "a": 255
     },
     "_spriteFrame": {
@@ -3293,9 +3293,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 37,
-      "g": 61,
-      "b": 104,
+      "r": 240,
+      "g": 240,
+      "b": 240,
       "a": 255
     },
     "_string": "46",
@@ -4234,8 +4234,8 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -7.92,
-      "y": 1.674,
+      "x": -15.549,
+      "y": -4.365,
       "z": 0
     },
     "_lrot": {
@@ -4247,8 +4247,8 @@
     },
     "_lscale": {
       "__type__": "cc.Vec3",
-      "x": 0.8,
-      "y": 0.8,
+      "x": 0.5,
+      "y": 0.5,
       "z": 1
     },
     "_mobility": 0,
@@ -4370,7 +4370,7 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 68.056,
+      "x": 56.355,
       "y": 1.579,
       "z": 0
     },
@@ -4844,7 +4844,7 @@
     "__prefab": {
       "__id__": 205
     },
-    "_hideEvent": 2,
+    "_hideEvent": 1,
     "_singleton": true,
     "_captureFocus": true,
     "_shade": false,

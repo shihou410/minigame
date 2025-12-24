@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.AnimationClip",
-    "_name": "btn",
+    "_name": "img",
     "_objFlags": 0,
     "__editorExtras__": {
       "embeddedPlayerGroups": []
@@ -11,7 +11,7 @@
     "speed": 1,
     "wrapMode": 2,
     "enableTrsBlending": false,
-    "_duration": 1.6666666666666667,
+    "_duration": 4,
     "_hash": 500763545,
     "_tracks": [
       {
@@ -62,7 +62,7 @@
   },
   {
     "__type__": "cc.animation.HierarchyPath",
-    "path": "xxlBtn"
+    "path": "content"
   },
   {
     "__type__": "cc.animation.Channel",
@@ -74,8 +74,8 @@
     "__type__": "cc.RealCurve",
     "_times": [
       0,
-      0.8333333134651184,
-      1.6666666269302368
+      2,
+      4
     ],
     "_values": [
       {
@@ -128,8 +128,8 @@
     "__type__": "cc.RealCurve",
     "_times": [
       0,
-      0.8333333134651184,
-      1.6666666269302368
+      2,
+      4
     ],
     "_values": [
       {
@@ -182,8 +182,8 @@
     "__type__": "cc.RealCurve",
     "_times": [
       0,
-      0.8333333134651184,
-      1.6666666269302368
+      2,
+      4
     ],
     "_values": [
       {

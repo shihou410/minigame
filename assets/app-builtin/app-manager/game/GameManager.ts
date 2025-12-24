@@ -17,7 +17,7 @@ export class GameManager extends BaseManager {
     } = null;
 
     private atlas_items: SpriteAtlas = null;
-    private prefab_item: Prefab = null;
+    public prefab_item: Prefab = null;
 
     private item_pool: NodePool = null;
 

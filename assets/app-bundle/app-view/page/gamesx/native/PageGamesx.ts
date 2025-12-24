@@ -1,4 +1,4 @@
-﻿import { _decorator, Asset, Color, ConfigurableConstraint, instantiate, JsonAsset, math, Node, NodeEventType, Prefab, randomRangeInt, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
+﻿import { _decorator, Asset, Color, ConfigurableConstraint, instantiate, JsonAsset, math, Node, NodeEventType, NodePool, Pool, Prefab, randomRangeInt, Sprite, Tween, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
@@ -12,6 +12,7 @@ const GRAY_COLOR: Color = new Color(122, 122, 122, 255);
 
 type GameItem = {
     id: number,
+    clickId: number,
     layer: number,
     type: number,
     node: Node,
@@ -40,6 +41,8 @@ export class PageGamesx extends BaseView.BindController(GameController) {
 
     private eff_put: Prefab = null;
 
+    private node_pool: NodePool = null;
+
 
     /** 关卡配置 */
     private level_config: any[] = null;
@@ -66,7 +69,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     protected miniViews: IMiniViewNames = ['PaperAllGame'];
 
     private itemId: number = 0;
-
+    private clickId: number = 0;
     private gameState: 'pause' | 'start' | 'end' = 'end';
 
 
@@ -78,6 +81,8 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         this.layer_temp = this.content.getChildByName('layer_temp');
         this.layer_mask = this.content.getChildByName('layer_mask');
 
+        this.node_pool = new NodePool();
+        this.addNodeToPool();
         app.manager.loader.load({
             path: 'prefab/effect_item_put',
             bundle: 'resources',
@@ -109,7 +114,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             views: this.miniViews,
             data: {
                 level: this.current_level_number,
-                marsk: PropType.XC | PropType.CH | PropType.SX
+                marsk: PropType.XC | PropType.CH
             }
         });
         this.current_level_path = `level/level_${Math.floor((this.current_level_number - 1) / 50)}`;
@@ -207,12 +212,14 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private startGame() {
         this.gameState = 'start';
         this.controller.gameRestore();
+        this.controller.gameStart(this.current_level_number);
     }
 
     private generateLayer(layers: number, centerx: number, centery: number) {
 
         for (let layer = 0; layer < layers; layer++) {
             const layer_node = new Node();
+            layer_node.addComponent(UITransform);
             this.layer_instance.addChild(layer_node);
             this.node_layers.push(layer_node);
             const items: GameItem[] = [];
@@ -232,16 +239,16 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     private createItem(layer: number, type: number, row: number, col: number): GameItem {
-        const node = app.manager.game.getItem();
+        let node = this.getItemNode();
         node.setScale(this.itemScale, this.itemScale);
-
         const item: GameItem = {
             id: this.itemId++,
+            clickId: 0,
             layer: layer,
             type: type,
             node: node,
-            row: 1,
-            col: 1,
+            row: row,
+            col: col,
             index: 0,
             cType: type,
         };
@@ -280,7 +287,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     private list_put(item: GameItem, isMagic: boolean) {
-
+        item.clickId = ++this.clickId;
         //先获取所有被遮挡的item
         const tempItems: GameItem[] = [];
         this.game_items.forEach(items => items.forEach(i => i.isBlock && tempItems.push(i)));
@@ -324,6 +331,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
         if (this.gameState != 'start') return;
         if (!this.elimi_list) return;
 
+        let move = false;
         let landedCount: number = 0;
         this.elimi_list?.forEach((item: GameItem, index: number) => {
             const target = this.index_to_list(item.index);
@@ -342,6 +350,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
                 this.eff_put_play(item);
             }
             if (item.isLanded) landedCount++;
+            if (item.isMove) move = true;
         });
 
         landedCount === this.elimi_list.length && this.check_game_status();
@@ -359,14 +368,13 @@ export class PageGamesx extends BaseView.BindController(GameController) {
                     this.elimi_list = this.elimi_list.filter(i => { return i.node });
                     this.list_refresh_index();
                     this.list_refresh_leng();
-                    this.check_game_status();
+                    this.check_game_win();
                 });
             }
         }
-
-        // console.log(this.layer_itme_list.children.length);
     }
 
+    /** 刷新遮挡状态 */
     private refresh_block_state(): GameItem[] {
 
         const blocks: GameItem[] = [];
@@ -439,6 +447,10 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             return;
         }
 
+        this.check_game_win();
+    }
+
+    private check_game_win() {
         let remain = this.elimi_list.length;
         this.game_items.forEach(v => remain += v.length);
         if (remain === 0) {
@@ -545,7 +557,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
                     this.layer_temp.addChild(eff);
                     eff.position = ls;
                 }
-                app.manager.game.putItem(element.node);
+                this.putItemNode(element.node);
                 element.node = null;
             });
             call && call();
@@ -555,6 +567,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     private tempColor: Color = new Color(255, 255, 255, 255);
     // item换色
     private anima_item_color(item: GameItem, sColor: Color, dColor: Color, duration: number = 0.3) {
+        if (!item) return;
         this.tempColor.set(sColor.r, sColor.g, sColor.b, sColor.a);
         tween(this.tempColor).to(0.3, { r: dColor.r, g: dColor.g, b: dColor.b, a: dColor.a }, {
             onUpdate: (target, ratio) => {
@@ -573,10 +586,7 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     private clearLevel() {
-        this.game_items.forEach(layer => layer.forEach(item => {
-            item.node.targetOff(NodeEventType.TOUCH_START);
-            item.node && app.manager.game.putItem(item.node);
-        }));
+        this.game_items.forEach(layer => layer.forEach(item => this.putItemNode(item.node)));
         this.layer_instance.removeAllChildren();
         this.layer_itme_list.removeAllChildren();
         this.layer_temp.removeAllChildren();
@@ -614,47 +624,69 @@ export class PageGamesx extends BaseView.BindController(GameController) {
     }
 
     /** 使用道具 */
-    private useProp(type: number) {
+    private useProp(type: PropType) {
 
         switch (type) {
-            case 0: // 提示道具
-                this.gameTip();
-                break;
-
-            case 1: // 消除道具
-                this.gameElimi();
-                break;
-            case 2: // 刷新道具
+            case PropType.SX: // 刷新道具
                 this.gameRefresh();
                 break;
+            case PropType.XC: // 消除道具
+                this.gameElimi();
+                break;
+            case PropType.CH: // 撤回道具
+                this.gameChehui();
+                break;
         }
 
 
     }
 
-    private tipMap: Map<number, GameItem[]> = new Map();
-    private gameTip() {
+    /** 撤销功能 */
+    private gameChehui() {
+        if (this.elimi_list.length <= 0) return;
 
-
-        let items: GameItem[] = [];
-        this.game_items.forEach(layer => layer.forEach(item => !item.isBlock && items.push(item)));
-
-        items.forEach(item => {
-            if (this.tipMap.has(item.type)) {
-                this.tipMap.get(item.type).push(item);
-            } else {
-                this.tipMap.set(item.type, [item]);
-            }
+        let max = 0;
+        this.elimi_list.forEach(e => {
+            if (!e.isElimi) { max = Math.max(max, e.clickId); }
         });
+        const index = this.elimi_list.findIndex(v => { return v.clickId === max; });
+        if (index < 0) return;
+        app.manager.ui.setTouchEnabled(false);
+        this.clickId--;
+        const item = this.elimi_list[index];
+        this.elimi_list.splice(index, 1);
+        this.list_refresh_index();
+        this.list_refresh_leng();
 
-        for (const [key, value] of this.tipMap) {
-            if (value.length >= 3) {
-                value.splice(0, 3).forEach(item => this.item_click(item)); return;
-            }
-        }
+        const layer = item.layer;
+        const ws = item.node.worldPosition;
+        this.node_layers[layer].insertChild(item.node, 0);
+        const ls = this.node_layers[layer].getComponent(UITransform).convertToNodeSpaceAR(ws);
+        item.node.setPosition(ls);
+        const pos = this.grid_to_node(item.row, item.col);
+
+        tween(item.node).to(0.3, { position: v3(pos[0], pos[1]) }).call(() => {
+            const layerItems = this.game_items[item.layer];
+            layerItems.push(item);
+            item.type = item.cType;
+            item.index = 0;
+            item.isElimi = false;
+            item.isMove = false;
+            item.isLanded = false;
+            item.isBlock = false;
+            item.node.on(NodeEventType.TOUCH_START, () => this.item_click(item), this);
+            const res = this.refresh_block_state();
+            res.forEach(r => {
+                r.node.getChildByName('normal').getComponent(Sprite).color = GRAY_COLOR.clone();
+                r.node.getChildByName('spr').getComponent(Sprite).color = GRAY_COLOR.clone();
+            });
+
+            app.manager.ui.setTouchEnabled(true);
+        }).start();
+        // item.node.setPosition(pos[0], pos[1]); 
     }
 
-
+    /** 消除功能 */
     private gameElimi() {
         if (this.gameState === "end") return;
         app.manager.ui.setTouchEnabled(false);
@@ -716,10 +748,37 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             }).start();
     }
 
-
+    /** 刷新功能 */
     private gameRefresh() {
 
     }
 
 
+    private addNodeToPool(leng: number = 20) {
+        for (let i = 0; i < leng; i++) {
+            const node = instantiate(app.manager.game.prefab_item);
+            this.node_pool.put(node);
+        }
+    }
+
+    private getItemNode(): Node {
+        let node = this.node_pool.get();
+        if (!node) {
+            this.addNodeToPool();
+            node = this.node_pool.get();
+        }
+        node.getComponent(UIOpacity).opacity = 255;
+        node.getChildByName('selected').active = false;
+        node.getChildByName('spr').getComponent(Sprite).spriteFrame = null;
+        node.getChildByName('spr').getComponent(Sprite).color = Color.WHITE;
+        node.getChildByName('normal').getComponent(Sprite).color = Color.WHITE;
+        return node;
+    }
+
+    private putItemNode(node: Node): void {
+        if (!node) return;
+        node.targetOff(NodeEventType.TOUCH_START);
+        Tween.stopAllByTarget(node);
+        this.node_pool.put(node);
+    }
 }

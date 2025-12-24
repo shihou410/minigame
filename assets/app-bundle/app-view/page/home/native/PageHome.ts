@@ -70,7 +70,8 @@ export class PageHome extends BaseView {
     }
 
     private onClickXXl() {
-        app.manager.ui.showAsync({ name: "PageGamesx", data: { level: app.manager.game.getLevel(GameType.XXL) } });
+        // app.manager.ui.showAsync({ name: "PageGamesx", data: { level: app.manager.game.getLevel(GameType.XXL) } });
+        app.manager.ui.showAsync({ name: "PageGamesx", data: { level: 5 } });
     }
 
     private onClickLLl() {

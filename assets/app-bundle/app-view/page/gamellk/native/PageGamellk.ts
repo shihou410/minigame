@@ -1,4 +1,4 @@
-import { _decorator, AnimationManager, easing, game, Graphics, graphicsAssembler, instantiate, JsonAsset, Label, math, Node, NodeEventType, Prefab, randomRange, randomRangeInt, Sprite, SpriteFrame, Tween, tween, UIOpacity, UITransform, utils, v2, v3, Vec2, Vec3 } from 'cc';
+import { _decorator, AnimationManager, easing, game, Graphics, graphicsAssembler, instantiate, JsonAsset, Label, math, Node, NodeEventType, NodePool, Prefab, randomRange, randomRangeInt, Sprite, SpriteFrame, Tween, tween, UIOpacity, UITransform, utils, v2, v3, Vec2, Vec3 } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
@@ -46,6 +46,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     private prefab_star: Prefab = null;
     private prefab_eff_magic: Prefab = null;
 
+    private nodePool: NodePool = null;
 
     // 子界面列表，数组顺序为子界面排列顺序
     protected miniViews: IMiniViewNames = ['PaperAllGame'];
@@ -63,6 +64,9 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.layer_effect = this.content.getChildByName('layer_effect');
         this.layer_mask = this.content.getChildByName('layer_mask');
         this.game_state = "ready";
+
+        this.nodePool = new NodePool();
+        this.addNodeToPool();
 
         const uid = app.manager.ui.showLoading();
         const task = app.lib.task.createASync();
@@ -255,7 +259,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     private creatorGameItem(type: number, row: number, col: number): GameItem {
 
         const itemScale = this.stageWidth / this.level_cfg.cols / ITEM_SIZE;
-        const node = app.manager.game.getItem();
+        const node = this.getItemNode();
         const item: GameItem = {
             id: this.itemID++,
             type: type,
@@ -311,6 +315,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
         this.controller.gameRestore();
         this.game_state = "plaing";
+        this.controller.gameStart(this.currentLevel);
     }
 
     private onItemDown(item: GameItem) {
@@ -489,9 +494,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.clearEvent(item);
         const node = item.node;
         item.node = null;
-        tween(node).to(0.2, { scale: v3(0, 0, 1) }, { easing: 'backInOut' }).call(() => {
-            app.manager.game.putItem(node);
-        }).start();
+        tween(node).to(0.2, { scale: v3(0, 0, 1) }, { easing: 'backInOut' }).call(() => this.putItemNode(node)).start();
     }
 
     private tryConnect(itemA: GameItem, itemB: GameItem) {
@@ -993,6 +996,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     }
 
     private anima_refresh_play2(duration: number, delay: number = 0.3) {
+        app.manager.ui.setTouchEnabled(false);
         const centerPos = this.getItemsCenter();
         const items: GameItem[] = [];
         for (let row = 1; row <= this.level_cfg.rows; row++) {
@@ -1015,7 +1019,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
             }).delay(delay)
             .call(() => {
                 items.forEach(item => { this.anima_luoxuan_refresh_play(item, duration); });
-            }).start();
+            }).delay(duration).call(() => app.manager.ui.setTouchEnabled(true)).start();
 
     }
 
@@ -1103,13 +1107,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
     private anima_item_enter_play(item: GameItem, delay: number) {
         const opacity: UIOpacity = item.node.getComponent(UIOpacity);
-        // opacity.opacity = 0;
-        // const y = item.node.position.y;
-        // item.node.setPosition(item.node.position.x, y + 80);
-        // tween(item.node).delay(delay).to(0.5, { position: v3(item.node.x, y) }, { easing: 'sineOut' }).start();
-        // tween(opacity).delay(delay).to(0.5, { opacity: 255 }).start();
-
-        // return;
         if (delay > 0) {
             tween(opacity).set({ opacity: 0 }).delay(delay).to(0.3, { opacity: 255 }).start();
             tween(item.node).set({ scale: v3(0, 0, 1) }).delay(delay).to(0.5, { scale: v3(item.originScale, item.originScale, 1) }, { easing: 'backOut' }).start();
@@ -1240,7 +1237,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
     /** 使用道具 */
     private onUseProp(type: PropType, node: Node) {
-        console.log("使用道具：", type);
         switch (type) {
             case PropType.TS: this.useTipProp(); break;
             case PropType.XC: this.useElimProp(node); break;
@@ -1262,7 +1258,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
         if (items.length < 4) return;
 
-        this.setTouchEnabled(false);
+        app.manager.ui.setTouchEnabled(false);
         const uit = this.layer_mask.getComponent(UIOpacity);
 
 
@@ -1277,38 +1273,26 @@ export class PageGamellk extends BaseView.BindController(GameController) {
             targetItems = targetItems.concat(items.splice(index2, 1));
         }
 
-        const ws = node.worldPosition;
         tween(uit)
-            .to(0.3, { opacity: 155 })
+            .to(0.5, { opacity: 155 })
             .call(() => {
-                const duration = 1;
                 targetItems.forEach((e, i) => {
-                    const eff = instantiate(this.prefab_eff_magic);
-                    tween(eff)
-                        .delay(i * duration)
-                        .call(() => {
-                            this.layer_effect.addChild(eff);
-                            const ls = this.layer_effect.getComponent(UITransform).convertToNodeSpaceAR(ws);
-                            eff.setPosition(ls);
-
-                            const r = Math.atan2(e.node.y - eff.y, e.node.x - eff.x);
-                            eff.angle = math.toDegree(r);
-                        })
-                        .to(duration, { x: e.node.x, y: e.node.y })
-                        .call(() => {
-                            this.layer_effect.addChild(e.node);
-                            eff.destroyAllChildren();
-                        })
-                        .delay((targetItems.length - 1) * duration)
+                    this.layer_effect.addChild(e.node);
+                    let s = e.node.scale.x;
+                    tween(e.node)
+                        .to(0.2, { scale: v3(s * 1.2, s * 1.2, 1) })
+                        .delay(0.3 + 0.2 * i)
                         .call(() => {
                             this.removeItem(e);
-                            eff.destroy();
-                        }).start();
+                            if (i === targetItems.length - 1) {
+                                app.manager.ui.setTouchEnabled(true);
+                            }
+                        })
+                        .start();
                 });
             })
-            .delay(5)
-            .to(0.3, { opacity: 0 })
-            .call(() => this.setTouchEnabled(true))
+            .delay(targetItems.length * 0.2)
+            .to(0.5, { opacity: 0 })
             .start();
     }
 
@@ -1317,7 +1301,6 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
         this.shuffleUntilSolvable();
         this.anima_refresh_play2(1);
-
     }
 
     /**
@@ -1353,5 +1336,33 @@ export class PageGamellk extends BaseView.BindController(GameController) {
 
         return v2(x, y).add(b);
     }
+
+
+    private addNodeToPool(leng: number = 120) {
+        for (let i = 0; i < leng; i++) {
+            const node = instantiate(app.manager.game.prefab_item);
+            this.nodePool.put(node);
+        }
+    }
+
+    private getItemNode(): Node {
+        let node = this.nodePool.get();
+        if (!node) {
+            this.addNodeToPool();
+            node = this.nodePool.get();
+        }
+        node.getComponent(UIOpacity).opacity = 255;
+        node.getChildByName('selected').active = false;
+        node.getChildByName('spr').getComponent(Sprite).spriteFrame = null;
+        return node;
+    }
+
+    private putItemNode(node: Node): void {
+        if (!node) return;
+        node.targetOff(NodeEventType.TOUCH_START);
+        Tween.stopAllByTarget(node);
+        this.nodePool.put(node);
+    }
+
 
 }
