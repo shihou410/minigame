@@ -3,6 +3,7 @@ import BaseView from '../../../../../../../extensions/app/assets/base/BaseView';
 import { GameController, PropType } from 'db://assets/app-builtin/app-controller/GameController';
 import { app } from 'db://assets/app/app';
 import { ButtonScale } from './expansion/ButtonScale';
+import { GameType } from '../../../../page/home/native/PageHome';
 const { ccclass, property } = _decorator;
 
 
@@ -18,6 +19,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
     private timeL: Label = null;
     private totalTime: number = 0;
 
+    private gameType: GameType = GameType.XXL;
     private _pause: boolean = true;
 
     private _time: number = 0;
@@ -66,6 +68,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
 
     protected update(dt: number): void {
         if (this._pause) return;
+        if (this.gameType === GameType.XXL) return;
         this.time -= dt;
     }
 
@@ -75,6 +78,7 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
         this.level_number = params.level;
         this.totalTime = params.time || 300;
         this.time = this.totalTime;
+        this.gameType = params.type;
 
         const propTypeMask = params.marsk;
 
@@ -103,8 +107,8 @@ export class PaperAllGame extends BaseView.BindController(GameController) {
                 icon.setScale(1, 1);
             }
         });
-
         this.title.string = this.level_number.toString();
+        this.timeL.node.active = this.gameType === GameType.LLL;
     }
 
     private onGameStart(level: number) {

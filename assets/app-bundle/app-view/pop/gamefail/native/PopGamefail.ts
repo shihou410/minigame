@@ -2,6 +2,7 @@ import { _decorator, Button, Node } from 'cc';
 import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { GameController } from 'db://assets/app-builtin/app-controller/GameController';
 import { app } from 'db://assets/app/app';
+import { miniSDK } from 'db://pkg/@gamex/cc-minisdk';
 const { ccclass, property } = _decorator;
 @ccclass('PopGamefail')
 export class PopGamefail extends BaseView.BindController(GameController) {
@@ -20,11 +21,9 @@ export class PopGamefail extends BaseView.BindController(GameController) {
         this.retryBtn = this.content.getChildByPath('btns/btn_retry');
         this.adBtn = this.content.getChildByPath('btns/btn_ad');
 
-
         this.backBtn.on(Button.EventType.CLICK, this.onClickBack, this);
         this.retryBtn.on(Button.EventType.CLICK, this.onClickRetry, this);
         this.adBtn.on(Button.EventType.CLICK, this.onClickAd, this);
-
     }
 
     private currentLeveL: number = 0;

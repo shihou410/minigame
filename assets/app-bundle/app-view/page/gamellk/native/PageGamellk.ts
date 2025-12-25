@@ -4,6 +4,7 @@ import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
 import { ASync } from 'db://app/lib/task/task';
 import { GameController, PropType } from 'db://assets/app-builtin/app-controller/GameController';
+import { GameType } from '../../home/native/PageHome';
 const { ccclass, property } = _decorator;
 
 const Level1: GameConfig = {
@@ -57,7 +58,7 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     private layer_mask: Node = null;
     private game_state: "ready" | "plaing" | "pause" | "end" = "ready";
     private LEVELS: GameConfig[] = null;
-    private currentLevel: number = 1;
+    private currentLevel: number = 0;
     onLoad() {
         this.content = this.node.getChildByName('content');
         this.layer_items = this.content.getChildByName('layer_items');
@@ -121,7 +122,9 @@ export class PageGamellk extends BaseView.BindController(GameController) {
     }
 
     // 界面打开时的相关逻辑写在这(onShow可被多次调用-它与onHide不成对)
-    onShow(params: any) { }
+    onShow(params: any) {
+        this.currentLevel = params.level;
+    }
 
     // 界面关闭时的相关逻辑写在这(已经关闭的界面不会触发onHide)
     onHide(result: undefined) {
@@ -183,9 +186,10 @@ export class PageGamellk extends BaseView.BindController(GameController) {
         this.showMiniViews({
             views: this.miniViews,
             data: {
-                level: 1,
+                level: this.currentLevel,
                 time: this.level_cfg.time,
-                marsk: PropType.XC | PropType.TS | PropType.SX
+                marsk: PropType.XC | PropType.TS | PropType.SX,
+                type: GameType.LLL,
             }
         });
 

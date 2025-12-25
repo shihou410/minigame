@@ -3,6 +3,7 @@ import BaseView from '../../../../../../extensions/app/assets/base/BaseView';
 import { IMiniViewNames } from '../../../../../app-builtin/app-admin/executor';
 import { app } from 'db://assets/app/app';
 import { GameController, PropType } from 'db://assets/app-builtin/app-controller/GameController';
+import { GameType } from '../../home/native/PageHome';
 const { ccclass } = _decorator;
 
 const ITEM_LIST_MAX: number = 7;
@@ -114,7 +115,8 @@ export class PageGamesx extends BaseView.BindController(GameController) {
             views: this.miniViews,
             data: {
                 level: this.current_level_number,
-                marsk: PropType.XC | PropType.CH
+                marsk: PropType.XC | PropType.CH,
+                type: GameType.XXL,
             }
         });
         this.current_level_path = `level/level_${Math.floor((this.current_level_number - 1) / 50)}`;

@@ -18,5 +18,8 @@
 		"add": "node ./index.js add",
 		"remove": "node ./index.js remove",
 		"update": "node ./index.js update"
+	},
+	"dependencies": {
+		"@gamex/cc-minisdk": "^1.0.1"
 	}
 }
